@@ -40,3 +40,10 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+.vercel
+
+# Office temp lock files
+~$*
+
+# Chrome extension (separate project)
+/extension

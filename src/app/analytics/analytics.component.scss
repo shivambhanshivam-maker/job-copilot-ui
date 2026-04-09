@@ -1,0 +1,480 @@
+.analytics-page {
+  padding: 2rem;
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  background: #f8fafc;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 1.5rem;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 2rem 0 0.25rem;
+
+  &--inline { margin: 0; }
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2rem 0 0.75rem;
+
+  .section-title { margin: 0; }
+}
+
+.funnel-filters {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.funnel-filter-tab {
+  padding: 0.28rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+  background: transparent;
+  color: #6b7280;
+  transition: all 0.15s;
+
+  &:hover { border-color: #a5b4fc; color: #4f46e5; }
+
+  &.active {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #fff;
+    font-weight: 600;
+  }
+}
+
+.loading-funnel {
+  opacity: 0.45;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.section-header-row {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.section-subtitle {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  margin: 0;
+}
+
+// ── Shared: metric header + subtitle + tooltip ────────────────────────────────
+
+.metric-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.metric-subtitle {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: 0.2rem 0 0.9rem;
+  line-height: 1.4;
+}
+
+.info-icon {
+  color: #d1d5db;
+  flex-shrink: 0;
+  cursor: help;
+  transition: color 0.15s;
+
+  &:hover { color: #9ca3af; }
+  &--light { color: rgba(255,255,255,0.5); &:hover { color: #fff; } }
+}
+
+.tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+
+  &:hover .tooltip-box {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.tooltip-box {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 230px;
+  background: #1f2937;
+  color: #f9fafb;
+  font-size: 0.72rem;
+  font-weight: 400;
+  line-height: 1.55;
+  padding: 0.55rem 0.75rem;
+  border-radius: 7px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s;
+  z-index: 200;
+  pointer-events: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #1f2937;
+  }
+
+  &--left {
+    left: auto;
+    right: 0;
+    transform: none;
+
+    &::after {
+      left: auto;
+      right: 6px;
+      transform: none;
+    }
+  }
+}
+
+// ── Shared: dual rate row ─────────────────────────────────────────────────────
+
+.dual-rate-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.rate-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.rate-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1e1b4b;
+  line-height: 1;
+
+  &--secondary {
+    color: #6366f1;
+  }
+}
+
+.rate-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+}
+
+.rate-divider {
+  width: 1px;
+  height: 2rem;
+  background: #e5e7eb;
+  flex-shrink: 0;
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+
+.empty-state {
+  font-size: 0.82rem;
+  color: #9ca3af;
+  font-style: italic;
+  margin: 0.5rem 0 0;
+}
+
+.loader {
+  text-align: center;
+  color: #9ca3af;
+  padding: 4rem;
+  font-size: 0.95rem;
+}
+
+// ── Section 1: Funnel cards ───────────────────────────────────────────────────
+
+.funnel-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.funnel-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.funnel-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.funnel-rate {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #1e1b4b;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+
+// ── Section 2: Behavior & Consistency ────────────────────────────────────────
+
+.behavior-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.panel-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9ca3af;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.avg-week {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+
+.avg-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #1e1b4b;
+}
+
+.avg-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.velocity-svg {
+  width: 100%;
+  height: 200px;
+  overflow: visible;
+
+  .chart-label {
+    font-size: 11px;
+    fill: #9ca3af;
+    font-family: inherit;
+  }
+
+  .axis-label {
+    font-size: 11px;
+  }
+
+  .dot-label {
+    fill: #6366f1;
+    font-size: 11px;
+    font-weight: 600;
+  }
+}
+
+// Status pipeline
+.pipeline-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.stacked-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+  background: #f3f4f6;
+}
+
+.bar-seg {
+  height: 100%;
+  transition: width 0.5s ease;
+
+  &.seg-applied   { background: #9ca3af; }
+  &.seg-interview { background: #7c3aed; }
+  &.seg-offer     { background: #16a34a; }
+  &.seg-rejected  { background: #ef4444; }
+}
+
+.pipeline-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.dot-applied   { background: #9ca3af; }
+  &.dot-interview { background: #7c3aed; }
+  &.dot-offer     { background: #16a34a; }
+  &.dot-rejected  { background: #ef4444; }
+}
+
+.legend-name {
+  flex: 1;
+  color: #6b7280;
+}
+
+.legend-count {
+  font-weight: 600;
+  color: #111827;
+}
+
+// ── Section 3: Performance cards ─────────────────────────────────────────────
+
+.perf-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.perf-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.perf-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9ca3af;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.perf-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1e1b4b;
+  line-height: 1;
+
+  &--red { color: #dc2626; }
+}
+
+// ── Section 4: Channel Effectiveness ─────────────────────────────────────────
+
+.channel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.channel-benchmark {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0.15rem;
+}
+
+.channel-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.card-metrics {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+
+  &.yield .metric-value { color: #4f46e5; }
+}
+
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.yield-bar-container {
+  height: 8px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.yield-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+
+  &.referral-bar { background: linear-gradient(90deg, #4f46e5, #818cf8); }
+  &.direct-bar   { background: linear-gradient(90deg, #6b7280, #9ca3af); }
+}

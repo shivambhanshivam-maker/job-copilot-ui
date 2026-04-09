@@ -1,0 +1,374 @@
+<div class="analytics-page">
+  <h2 class="page-title">Analytics</h2>
+
+  @if (loading) {
+    <!-- Funnel cards skeleton -->
+    <div class="funnel-cards" style="margin-bottom:1.25rem">
+      @for (c of [1,2]; track c) {
+        <div class="funnel-card">
+          <span class="skeleton" style="height:11px;width:130px;display:block;margin-bottom:0.75rem"></span>
+          <span class="skeleton" style="height:10px;width:200px;display:block;margin-bottom:1.25rem"></span>
+          <span class="skeleton" style="height:44px;width:110px;display:block;border-radius:8px"></span>
+        </div>
+      }
+    </div>
+
+    <!-- Behavior row skeleton -->
+    <span class="skeleton" style="height:13px;width:160px;display:block;margin-bottom:1rem;border-radius:6px"></span>
+    <div class="behavior-row" style="margin-bottom:1.25rem">
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem">
+          <div>
+            <span class="skeleton" style="height:11px;width:150px;display:block;margin-bottom:0.5rem"></span>
+            <span class="skeleton" style="height:10px;width:200px;display:block"></span>
+          </div>
+          <span class="skeleton" style="height:36px;width:56px;display:block;border-radius:8px"></span>
+        </div>
+        <span class="skeleton" style="height:180px;width:100%;display:block;border-radius:10px"></span>
+      </div>
+      <div class="panel">
+        <span class="skeleton" style="height:11px;width:120px;display:block;margin-bottom:0.5rem"></span>
+        <span class="skeleton" style="height:10px;width:170px;display:block;margin-bottom:1.25rem"></span>
+        <span class="skeleton" style="height:12px;width:100%;display:block;border-radius:6px;margin-bottom:1.5rem"></span>
+        @for (r of [1,2,3,4]; track r) {
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.65rem">
+            <span class="skeleton" style="width:9px;height:9px;border-radius:50%;flex-shrink:0"></span>
+            <span class="skeleton" style="height:11px;flex:1;display:block"></span>
+            <span class="skeleton" style="height:11px;width:20px;display:block"></span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Performance cards skeleton -->
+    <span class="skeleton" style="height:13px;width:200px;display:block;margin-bottom:1rem;border-radius:6px"></span>
+    <div class="perf-cards" style="margin-bottom:1.25rem">
+      @for (c of [1,2,3]; track c) {
+        <div class="perf-card">
+          <span class="skeleton" style="height:11px;width:110px;display:block;margin-bottom:0.75rem"></span>
+          <span class="skeleton" style="height:10px;width:160px;display:block;margin-bottom:1rem"></span>
+          <span class="skeleton" style="height:36px;width:90px;display:block;border-radius:8px"></span>
+        </div>
+      }
+    </div>
+
+    <!-- Channel cards skeleton -->
+    <span class="skeleton" style="height:13px;width:180px;display:block;margin-bottom:1rem;border-radius:6px"></span>
+    <div class="channel-grid">
+      @for (c of [1,2,3]; track c) {
+        <div class="perf-card">
+          <span class="skeleton" style="height:11px;width:100px;display:block;margin-bottom:0.75rem"></span>
+          <span class="skeleton" style="height:10px;width:150px;display:block;margin-bottom:1.25rem"></span>
+          <div style="display:flex;gap:1.5rem;margin-bottom:1rem">
+            @for (m of [1,2,3]; track m) {
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <span class="skeleton" style="height:24px;width:44px;display:block;border-radius:6px"></span>
+                <span class="skeleton" style="height:9px;width:60px;display:block"></span>
+              </div>
+            }
+          </div>
+          <span class="skeleton" style="height:8px;width:100%;display:block;border-radius:4px"></span>
+        </div>
+      }
+    </div>
+  } @else {
+
+    <!-- ── Section 1: Funnel Conversion ──────────────────────────────── -->
+    @if (funnelData) {
+      <div class="section-header">
+        <h3 class="section-title">Funnel Conversion</h3>
+        @if (funnelFilterTabs.length) {
+          <div class="funnel-filters">
+            @for (tab of funnelFilterTabs; track tab) {
+              <button class="funnel-filter-tab"
+                      [class.active]="selectedFunnelCategory === tab"
+                      (click)="onFunnelFilterChange(tab)">
+                {{ tab }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+      <div class="funnel-cards" [class.loading-funnel]="loadingFunnel">
+
+        <!-- Applied → Interview -->
+        <div class="funnel-card">
+          <div class="metric-header">
+            <span class="funnel-label">Applied → Interview</span>
+            <div class="tooltip-wrap">
+              <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              <div class="tooltip-box">Only counts resolved applications (ones that got any response). Excludes applications still waiting with no reply.</div>
+            </div>
+          </div>
+          <p class="metric-subtitle">Of applications that got a response, how many led to an interview</p>
+          @if (funnelData.resolvedApplications === 0) {
+            <p class="empty-state">Not enough data yet — keep tracking your applications</p>
+          } @else {
+            <div class="dual-rate-row">
+              @if (funnelData.appliedToInterviewLast30Days != null) {
+                <div class="rate-block">
+                  <span class="rate-value rate-value--secondary">{{ funnelData.appliedToInterviewLast30Days * 100 | number:'1.1-1' }}%</span>
+                  <span class="rate-label">Last 30d</span>
+                </div>
+                <div class="rate-divider"></div>
+              }
+              <div class="rate-block">
+                <span class="rate-value">{{ funnelData.appliedToInterviewRate * 100 | number:'1.1-1' }}%</span>
+                <span class="rate-label">All-time</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Interview → Offer -->
+        <div class="funnel-card">
+          <div class="metric-header">
+            <span class="funnel-label">Interview → Offer</span>
+            <div class="tooltip-wrap">
+              <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              <div class="tooltip-box">How well you're converting interview opportunities into actual offers.</div>
+            </div>
+          </div>
+          <p class="metric-subtitle">Of interviews, how many converted to an offer</p>
+          @if (funnelData.interviews === 0) {
+            <p class="empty-state">Not enough data yet — keep tracking your applications</p>
+          } @else {
+            <div class="dual-rate-row">
+              @if (funnelData.interviewToOfferLast30Days != null) {
+                <div class="rate-block">
+                  <span class="rate-value rate-value--secondary">{{ funnelData.interviewToOfferLast30Days * 100 | number:'1.1-1' }}%</span>
+                  <span class="rate-label">Last 30d</span>
+                </div>
+                <div class="rate-divider"></div>
+              }
+              <div class="rate-block">
+                <span class="rate-value">{{ funnelData.interviewToOfferRate * 100 | number:'1.1-1' }}%</span>
+                <span class="rate-label">All-time</span>
+              </div>
+            </div>
+          }
+        </div>
+
+      </div>
+    }
+
+    <!-- ── Section 2: Behavior & Consistency ─────────────────────────── -->
+    <h3 class="section-title">Behavior &amp; Consistency</h3>
+    <div class="behavior-row">
+
+      <!-- Application Velocity -->
+      @if (velocityData) {
+        <div class="panel velocity-panel">
+          <div class="panel-header">
+            <div>
+              <div class="metric-header">
+                <span class="panel-label">APPLICATION VELOCITY</span>
+                <div class="tooltip-wrap">
+                  <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                  </svg>
+                  <div class="tooltip-box">Tracks your consistency. A steady or growing trend means you're staying active in your search.</div>
+                </div>
+              </div>
+              <p class="metric-subtitle">Number of applications submitted per week</p>
+            </div>
+            <div class="avg-week">
+              <span class="avg-value">{{ velocityData.avgPerWeek | number:'1.1-1' }}</span>
+              <span class="avg-label">Avg/Week</span>
+            </div>
+          </div>
+
+          @if (velocityEmpty) {
+            <p class="empty-state">Not enough data yet — keep tracking your applications</p>
+          } @else {
+            <svg class="velocity-svg" [attr.viewBox]="velocityViewBox" preserveAspectRatio="xMidYMid meet">
+              @for (tick of yTicks; track tick.value) {
+                <line [attr.x1]="chartLeft" [attr.y1]="tick.y" [attr.x2]="chartRight" [attr.y2]="tick.y" stroke="#f0f0f0" stroke-width="1"/>
+                <text [attr.x]="chartLeft - 8" [attr.y]="tick.y + 4" text-anchor="end" class="chart-label axis-label">{{ tick.value }}</text>
+              }
+              <line [attr.x1]="chartLeft" [attr.y1]="chartBottom" [attr.x2]="chartRight" [attr.y2]="chartBottom" stroke="#e5e7eb" stroke-width="1"/>
+              <path [attr.d]="velocityPath" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              @for (pt of chartPoints; track pt.label) {
+                <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="4.5" fill="#fff" stroke="#6366f1" stroke-width="2"/>
+                <text [attr.x]="pt.x" [attr.y]="pt.y - 10" text-anchor="middle" class="chart-label dot-label">{{ pt.count }}</text>
+                <text [attr.x]="pt.x" [attr.y]="chartBottom + 18" text-anchor="middle" class="chart-label axis-label">{{ pt.label }}</text>
+              }
+            </svg>
+          }
+        </div>
+      }
+
+      <!-- Status Pipeline -->
+      @if (pipelineData) {
+        <div class="panel pipeline-panel">
+          <div class="metric-header">
+            <span class="panel-label">STATUS PIPELINE</span>
+            <div class="tooltip-wrap">
+              <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              <div class="tooltip-box tooltip-box--left">A snapshot of where all your applications stand right now.</div>
+            </div>
+          </div>
+          <p class="metric-subtitle">Your current applications by stage</p>
+
+          @if (pipelineTotal === 0) {
+            <p class="empty-state">Not enough data yet — keep tracking your applications</p>
+          } @else {
+            <div class="stacked-bar">
+              <div class="bar-seg seg-applied"   [style.width.%]="pipelinePct(pipelineData.applied)"></div>
+              <div class="bar-seg seg-interview" [style.width.%]="pipelinePct(pipelineData.interview)"></div>
+              <div class="bar-seg seg-offer"     [style.width.%]="pipelinePct(pipelineData.offer)"></div>
+              <div class="bar-seg seg-rejected"  [style.width.%]="pipelinePct(pipelineData.rejected)"></div>
+            </div>
+            <div class="pipeline-legend">
+              <div class="legend-row">
+                <span class="legend-dot dot-applied"></span>
+                <span class="legend-name">Applied</span>
+                <span class="legend-count">{{ pipelineData.applied }}</span>
+              </div>
+              <div class="legend-row">
+                <span class="legend-dot dot-interview"></span>
+                <span class="legend-name">Interview</span>
+                <span class="legend-count">{{ pipelineData.interview }}</span>
+              </div>
+              <div class="legend-row">
+                <span class="legend-dot dot-offer"></span>
+                <span class="legend-name">Offer</span>
+                <span class="legend-count">{{ pipelineData.offer }}</span>
+              </div>
+              <div class="legend-row">
+                <span class="legend-dot dot-rejected"></span>
+                <span class="legend-name">Rejected</span>
+                <span class="legend-count">{{ pipelineData.rejected }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+    </div>
+
+    <!-- ── Section 3: Performance & Market Response ───────────────────── -->
+    @if (performanceData) {
+      <h3 class="section-title">Performance &amp; Market Response</h3>
+      <div class="perf-cards">
+
+        <!-- Response Rate -->
+        <div class="perf-card">
+          <div class="metric-header">
+            <span class="perf-label">RESPONSE RATE</span>
+            <div class="tooltip-wrap">
+              <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              <div class="tooltip-box">Includes any status change away from Applied — interview invites, rejections, and offers all count as a response. A low rate may indicate your resume needs work or you're applying to poor-fit roles.</div>
+            </div>
+          </div>
+          <p class="metric-subtitle">How many of your applications got any reply</p>
+          <div class="dual-rate-row">
+            @if (performanceData.responseRateLast30Days != null) {
+              <div class="rate-block">
+                <span class="rate-value rate-value--secondary">{{ performanceData.responseRateLast30Days * 100 | number:'1.0-0' }}%</span>
+                <span class="rate-label">Last 30d</span>
+              </div>
+              <div class="rate-divider"></div>
+            }
+            <div class="rate-block">
+              <span class="rate-value">{{ performanceData.responseRate * 100 | number:'1.0-0' }}%</span>
+              <span class="rate-label">All-time</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Response Time -->
+        <div class="perf-card">
+          <div class="metric-header">
+            <span class="perf-label">RESPONSE TIME</span>
+            <div class="tooltip-wrap">
+              <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              <div class="tooltip-box">How quickly companies are getting back to you on average. Only counts applications that received a response.</div>
+            </div>
+          </div>
+          <p class="metric-subtitle">Average days from applying to first response</p>
+          <span class="perf-value">{{ performanceData.avgResponseTimeDays | number:'1.1-1' }} Days</span>
+        </div>
+
+        <!-- Ghosting Rate -->
+        <div class="perf-card">
+          <div class="metric-header">
+            <span class="perf-label">GHOSTING RATE</span>
+            <div class="tooltip-wrap">
+              <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              <div class="tooltip-box tooltip-box--left">Applications still sitting in Applied with no reply after 30 days. A high ghosting rate may signal a mismatch between your profile and the roles you're targeting.</div>
+            </div>
+          </div>
+          <p class="metric-subtitle">Applications with no update in over 30 days</p>
+          <span class="perf-value perf-value--red">{{ performanceData.ghostingRate * 100 | number:'1.0-0' }}%</span>
+        </div>
+
+      </div>
+    }
+
+    <!-- ── Section 4: Channel Effectiveness ──────────────────────────── -->
+    @if (channelData) {
+      <h3 class="section-title">Channel Effectiveness</h3>
+      <div class="channel-grid">
+
+        <!-- Referral Multiplier summary card -->
+        <div class="perf-card">
+          <div class="metric-header">
+            <span class="perf-label">REFERRAL MULTIPLIER</span>
+            <div class="tooltip-wrap">
+              <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              <div class="tooltip-box">How many times more likely a referral application is to reach interview stage compared to a direct application.</div>
+            </div>
+          </div>
+          <p class="metric-subtitle">Referral vs direct interview conversion</p>
+          <span class="perf-value">{{ channelData.multiplier | number:'1.1-1' }}x</span>
+          @if (benchmarkValue) {
+            <span class="channel-benchmark">Industry avg: {{ benchmarkValue | number:'1.1-1' }}x</span>
+          }
+        </div>
+
+        <!-- Referral card -->
+        <div class="channel-card">
+          <div class="metric-header" style="margin-bottom: 1rem">
+            <span class="perf-label">REFERRAL</span>
+          </div>
+          <div class="card-metrics">
+            <div class="metric"><span class="metric-value">{{ channelData.referralApplications }}</span><span class="metric-label">Applications</span></div>
+            <div class="metric"><span class="metric-value">{{ channelData.referralInterviews }}</span><span class="metric-label">Interviews</span></div>
+            <div class="metric yield"><span class="metric-value">{{ channelData.referralYield * 100 | number:'1.1-1' }}%</span><span class="metric-label">Yield</span></div>
+          </div>
+          <div class="yield-bar-container"><div class="yield-bar referral-bar" [style.width.%]="channelData.referralYield * 100"></div></div>
+        </div>
+
+        <!-- Direct card -->
+        <div class="channel-card">
+          <div class="metric-header" style="margin-bottom: 1rem">
+            <span class="perf-label">DIRECT</span>
+          </div>
+          <div class="card-metrics">
+            <div class="metric"><span class="metric-value">{{ channelData.directApplications }}</span><span class="metric-label">Applications</span></div>
+            <div class="metric"><span class="metric-value">{{ channelData.directInterviews }}</span><span class="metric-label">Interviews</span></div>
+            <div class="metric yield"><span class="metric-value">{{ channelData.directYield * 100 | number:'1.1-1' }}%</span><span class="metric-label">Yield</span></div>
+          </div>
+          <div class="yield-bar-container"><div class="yield-bar direct-bar" [style.width.%]="channelData.directYield * 100"></div></div>
+        </div>
+
+      </div>
+    }
+
+  }
+</div>

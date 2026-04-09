@@ -1,0 +1,822 @@
+<div class="flex flex-col h-full p-6 gap-4 box-border bg-slate-50">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <h2 class="text-xl font-bold text-slate-800 m-0">Job Applications</h2>
+    @if (activeTab === 'applications') {
+      <button class="add-btn" (click)="addRow()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add Application
+      </button>
+    }
+  </div>
+
+  <!-- Tabs -->
+  <div class="page-tabs">
+    <button class="page-tab" [class.active]="activeTab === 'applications'" (click)="activeTab = 'applications'">Applications</button>
+    <button class="page-tab" [class.active]="activeTab === 'emailTest'" (click)="activeTab = 'emailTest'">Email Test</button>
+  </div>
+
+  <!-- Toolbar (applications tab only) -->
+  <div class="flex items-center gap-3 flex-wrap" [style.display]="activeTab === 'applications' ? 'flex' : 'none'">
+    <div class="search-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 shrink-0">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" class="bg-transparent border-none outline-none text-sm w-52 text-slate-700 placeholder:text-slate-400"
+             [(ngModel)]="searchQuery" placeholder="Search company, title, recruiter…" />
+    </div>
+
+    <div class="flex gap-1.5 flex-wrap">
+      <button class="chip" [class.active]="!filterStatus" (click)="filterStatus = null">All</button>
+      @for (s of statuses; track s) {
+        <button class="chip" [class.active]="filterStatus === s" (click)="toggleFilter(s)">{{ s }}</button>
+      }
+    </div>
+  </div>
+
+  <!-- ── Applications tab ───────────────────────────────── -->
+  @if (activeTab === 'applications') {
+
+  <!-- Table -->
+  @if (loading) {
+    <div class="flex-1 overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table class="w-full border-collapse table-fixed">
+        <thead class="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
+          <tr>
+            <th class="th-cell opp-col">Opportunity</th>
+            <th class="th-cell cat-col sortable" (click)="setSort('roleCategory')">
+              Category
+              <span class="sort-icon">{{ sortField === 'roleCategory' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
+            </th>
+            <th class="th-cell status-col">Status &amp; Schedule</th>
+            <th class="th-cell cv-col">Documents</th>
+            <th class="th-cell timeline-col">Timeline</th>
+            <th class="th-cell w-10"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of [1,2,3,4,5,6,7]; track row) {
+            <tr class="app-row">
+              <td class="td-cell opp-col">
+                <div style="display:flex;align-items:center;gap:0.75rem">
+                  <span class="skeleton" style="width:36px;height:36px;border-radius:10px;flex-shrink:0"></span>
+                  <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:0">
+                    <span class="skeleton" style="height:12px;width:70%"></span>
+                    <span class="skeleton" style="height:10px;width:45%"></span>
+                  </div>
+                </div>
+              </td>
+              <td class="td-cell cat-col"><span class="skeleton" style="height:11px;width:80px;display:block"></span></td>
+              <td class="td-cell"><span class="skeleton" style="height:24px;width:130px;border-radius:999px;display:block"></span></td>
+              <td class="td-cell cv-col"><span class="skeleton" style="height:24px;width:88px;border-radius:7px;display:block"></span></td>
+              <td class="td-cell timeline-col"><span class="skeleton" style="height:24px;width:64px;border-radius:6px;display:block"></span></td>
+              <td class="td-cell"><span class="skeleton" style="height:16px;width:16px;border-radius:4px;display:block"></span></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="flex-1 overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table class="w-full border-collapse table-fixed">
+        <thead class="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
+          <tr>
+            <th class="th-cell opp-col sortable" (click)="setSort('company')">
+              Opportunity
+              <span class="sort-icon">{{ sortField === 'company' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
+            </th>
+            <th class="th-cell cat-col sortable" (click)="setSort('roleCategory')">
+              Category
+              <span class="sort-icon">{{ sortField === 'roleCategory' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
+            </th>
+            <th class="th-cell status-col sortable" (click)="setSort('applicationStatus')">
+              Status &amp; Schedule
+              <span class="sort-icon">{{ sortField === 'applicationStatus' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
+            </th>
+            <th class="th-cell cv-col">Documents</th>
+            <th class="th-cell timeline-col">Timeline</th>
+            <th class="th-cell w-10"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (app of filteredApps; track app.id) {
+
+            <!-- Main row -->
+            <tr class="app-row group" [class.row-saved]="savedRows.has(app.id!)" [class.row-error]="errorRows.has(app.id!)" [class.row-action-pending]="!!getPendingAction(app)">
+
+              <!-- Opportunity: avatar + company / title stack -->
+              <td class="td-cell">
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="company-avatar shrink-0">{{ getInitials(app.company) }}</span>
+                  <div class="opp-text-col">
+                    @if (isEditing(app.id!, 'company')) {
+                      <input class="edit-input font-semibold text-sm"
+                             [value]="app.company"
+                             (input)="app.company = $any($event.target).value"
+                             (blur)="finishEdit(app)"
+                             (keydown.enter)="finishEdit(app)"
+                             autofocus />
+                    } @else {
+                      <span class="cell-display font-semibold text-sm text-slate-800"
+                            (click)="startEdit(app.id!, 'company', $event, app.company)"
+                            [title]="app.company">
+                        {{ app.company || '—' }}
+                      </span>
+                    }
+                    @if (isEditing(app.id!, 'jobTitle')) {
+                      <input class="edit-input text-xs text-slate-400"
+                             [value]="app.jobTitle"
+                             (input)="app.jobTitle = $any($event.target).value"
+                             (blur)="finishEdit(app)"
+                             (keydown.enter)="finishEdit(app)"
+                             autofocus />
+                    } @else {
+                      <span class="cell-display text-xs text-slate-400"
+                            (click)="startEdit(app.id!, 'jobTitle', $event, app.jobTitle)"
+                            [title]="app.jobTitle">
+                        {{ app.jobTitle || '—' }}
+                      </span>
+                    }
+                    @if (getPendingAction(app); as action) {
+                      <button class="action-pill" (click)="toggleAction(app.id!); $event.stopPropagation()">
+                        <span class="action-pill-primary">Action Required</span>
+                        <span class="action-pill-label">· {{ getActionLabel(action) }}</span>
+                        <span class="action-pill-chevron">▾</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+              </td>
+
+              <!-- Category -->
+              <td class="td-cell">
+                <button class="category-badge" (click)="openCategoryMenu(app, $event)">
+                  {{ app.roleCategory || '—' }}
+                  <span class="text-[9px] ml-1 opacity-70">▾</span>
+                </button>
+              </td>
+
+              <!-- Status + Interview Date (combined) -->
+              <td class="td-cell">
+                <div class="status-date-cell">
+                  <button class="status-badge" [class]="getStatusClass(app.applicationStatus)"
+                          (click)="openStatusMenu(app, $event)">
+                    {{ app.applicationStatus }}
+                    <span class="text-[9px] ml-1 opacity-70">▾</span>
+                  </button>
+
+                  @if (app.applicationStatus === 'Interview') {
+                    @if (isEditing(app.id!, 'interviewDate')) {
+                      <input appFlatpickr
+                             class="date-inline-input"
+                             [fpValue]="app.interviewDate"
+                             (fpChange)="onFlatpickrChange(app, $event)"
+                             (fpClose)="finishEdit(app)"
+                             autofocus />
+                    } @else if (app.interviewDate) {
+                      <button class="date-chip"
+                              (click)="startEdit(app.id!, 'interviewDate', $event, app.interviewDate)">
+                        {{ formatDisplayDate(app.interviewDate) }}
+                      </button>
+                    } @else {
+                      <button class="date-chip date-chip--empty"
+                              (click)="startEdit(app.id!, 'interviewDate', $event, '')">
+                        + Add date
+                      </button>
+                    }
+                  }
+                </div>
+              </td>
+
+              <!-- Documents (CV + JD) -->
+              <td class="td-cell">
+                <div class="docs-cell">
+
+                  <!-- CV slot -->
+                  <div class="doc-slot">
+                    @if (app.cvId && getCvName(app.cvId)) {
+                      <button class="doc-btn doc-btn--filled" (click)="openCvMenu(app, $event)"
+                              [class.doc-btn--open]="cvDropdown?.id === app.id">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        CV Uploaded
+                        <span class="doc-btn-chevron">▾</span>
+                      </button>
+                    } @else {
+                      <button class="doc-btn" (click)="openCvMenu(app, $event)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add CV
+                      </button>
+                    }
+                  </div>
+
+                  <!-- JD slot -->
+                  <div class="doc-slot">
+                    @if (hasJd(app)) {
+                      <button class="doc-btn doc-btn--filled" (click)="openJdModal(app, $event)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        JD Copied
+                        <span class="doc-btn-chevron">▾</span>
+                      </button>
+                    } @else {
+                      <button class="doc-btn doc-btn--jd" (click)="openJdModal(app, $event)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add JD
+                      </button>
+                    }
+                  </div>
+
+                  <!-- Fit check slot -->
+                  @if (canRunFit(app)) {
+                    <div class="doc-slot fit-slot">
+                      @if (runningFitIds.has(app.id!)) {
+                        <span class="fit-spinner"></span>
+                      } @else if (loadingInsightId === app.id) {
+                        <span class="fit-spinner"></span>
+                      } @else if (app.fitSummary && !app.fitSummary.isStale) {
+                        <button class="fit-score-badge"
+                                [style.background]="getFitScoreBg(app.fitSummary.fitScore)"
+                                [style.color]="getFitScoreColor(app.fitSummary.fitScore)"
+                                (click)="openInsightModal(app); $event.stopPropagation()">
+                          {{ app.fitSummary.fitScore }}% Fit
+                        </button>
+                      } @else {
+                        <button class="fit-run-btn" (click)="fitCheck(app); $event.stopPropagation()">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                          </svg>
+                          {{ app.fitSummary?.isStale ? 'Re-run Fit' : 'Run Fit Check' }}
+                        </button>
+                      }
+                    </div>
+                  }
+
+                </div>
+              </td>
+
+              <!-- Timeline -->
+              <td class="td-cell">
+                @if (app.updates?.length) {
+                  <button class="updates-toggle-btn"
+                          [class.active]="expandedUpdatesIds.has(app.id!)"
+                          (click)="toggleUpdates(app.id!); $event.stopPropagation()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    {{ app.updates!.length }} {{ app.updates!.length > 1 ? 'Entries' : 'Entry' }}
+                  </button>
+                } @else {
+                  <span class="text-slate-300 text-sm">—</span>
+                }
+              </td>
+
+              <!-- Notes + Delete -->
+              <td class="td-cell w-12">
+                <div class="row-actions">
+                  @if (savingRows.has(app.id!) || deletingRows.has(app.id!)) {
+                    <span class="row-save-spinner"></span>
+                  } @else {
+                    <button class="notes-toggle-btn"
+                            [class.notes-toggle-btn--active]="notesPopover?.id === app.id"
+                            [class.notes-toggle-btn--has-notes]="app.notes"
+                            (click)="openNotesPopover(app, $event)" title="Notes">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                      </svg>
+                    </button>
+                    <button class="delete-row-btn"
+                            [style.visibility]="(savedRows.has(app.id!) || errorRows.has(app.id!)) ? 'hidden' : 'visible'"
+                            (click)="deleteRow(app)" title="Delete">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                      </svg>
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+
+            <!-- Action expand row -->
+            @if (expandedActionIds.has(app.id!) && getPendingAction(app); as action) {
+              <tr class="notification-tr">
+                <td colspan="6">
+                  <div class="pending-action-row">
+                    <span class="pending-icon">⚠</span>
+                    <span class="pending-message">{{ action.message }}</span>
+                    @if (action.actionType === 'FOLLOW_UP_REFERRAL') {
+                      <button class="pending-btn yes" (click)="handleYes(action)">Yes</button>
+                      <button class="pending-btn remind" (click)="handleRemindLater(action)">No, Remind Later</button>
+                      <button class="pending-btn del" (click)="handleDeleteRecord(action)">No, Delete Record</button>
+                    } @else {
+                      <button class="pending-btn close-btn" (click)="handleYes(action)">Yes, Close</button>
+                      <button class="pending-btn remind" (click)="handleRemindLater(action)">Remind Later</button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+
+
+          }
+
+          @if (!filteredApps.length) {
+            <tr>
+              <td colspan="6" class="text-center text-slate-400 text-sm py-16">
+                @if (searchQuery || filterStatus) {
+                  No applications match your filters.
+                } @else {
+                  No applications yet. Click "Add Application" to get started.
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Add Application Modal -->
+  @if (showAddModal) {
+    <div class="add-modal-backdrop" (click)="!addSaving && (showAddModal = false)">
+      <div class="add-modal-card" (click)="$event.stopPropagation()">
+        <h3 class="add-modal-title">New Application</h3>
+
+        <div class="add-modal-field">
+          <label class="add-modal-label">Company <span class="add-modal-required">*</span></label>
+          <input class="add-modal-input" [class.add-modal-input--error]="addFormTouched && !addForm.company.trim()"
+                 [(ngModel)]="addForm.company" placeholder="e.g. Google" autofocus />
+          @if (addFormTouched && !addForm.company.trim()) {
+            <span class="add-modal-error">Company name is required</span>
+          }
+        </div>
+
+        <div class="add-modal-field">
+          <label class="add-modal-label">Job Title <span class="add-modal-required">*</span></label>
+          <input class="add-modal-input" [class.add-modal-input--error]="addFormTouched && !addForm.jobTitle.trim()"
+                 [(ngModel)]="addForm.jobTitle" placeholder="e.g. Product Manager" />
+          @if (addFormTouched && !addForm.jobTitle.trim()) {
+            <span class="add-modal-error">Job title is required</span>
+          }
+        </div>
+
+        <div class="add-modal-field">
+          <label class="add-modal-label">Category <span class="add-modal-required">*</span></label>
+          <select class="add-modal-input" [class.add-modal-input--error]="addFormTouched && !addForm.roleCategory"
+                  [(ngModel)]="addForm.roleCategory">
+            <option value="">Select a category</option>
+            @for (cat of roleCategories; track cat) {
+              <option [value]="cat">{{ cat }}</option>
+            }
+          </select>
+          @if (addFormTouched && !addForm.roleCategory) {
+            <span class="add-modal-error">Category is required</span>
+          }
+        </div>
+
+        <div class="add-modal-actions">
+          <button class="add-modal-btn add-modal-btn--cancel" [disabled]="addSaving" (click)="showAddModal = false">Cancel</button>
+          <button class="add-modal-btn add-modal-btn--submit" [disabled]="addSaving" (click)="submitNewApp()">
+            @if (addSaving) {
+              <span class="add-modal-spinner"></span> Saving…
+            } @else {
+              Add Application
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- JD Modal -->
+  @if (jdModal) {
+    <div class="add-modal-backdrop" (click)="jdModal = null">
+      <div class="add-modal-card jd-modal-card" (click)="$event.stopPropagation()">
+        <h3 class="add-modal-title">Job Description — {{ jdModal.app.company }}</h3>
+
+        <div class="add-modal-field">
+          <label class="add-modal-label">Job Posting URL</label>
+          <input class="add-modal-input" type="url" [(ngModel)]="jdForm.url"
+                 placeholder="https://careers.company.com/job/..." />
+        </div>
+
+        <div class="add-modal-field">
+          <label class="add-modal-label">Job Description Text <span class="add-modal-required">*</span></label>
+          <textarea class="add-modal-input jd-textarea" rows="10" [(ngModel)]="jdForm.text"
+                    [class.add-modal-input--error]="jdFormError"
+                    placeholder="Paste the full job description here…"></textarea>
+          @if (jdFormError) {
+            <span class="add-modal-error">{{ jdFormError }}</span>
+          }
+        </div>
+
+        <div class="add-modal-actions">
+          @if (hasJd(jdModal.app)) {
+            <button class="add-modal-btn add-modal-btn--cancel" style="color:#dc2626;background:#fee2e2"
+                    (click)="clearJd()">
+              Remove JD
+            </button>
+          }
+          <button class="add-modal-btn add-modal-btn--cancel" (click)="jdModal = null">Cancel</button>
+          <button class="add-modal-btn add-modal-btn--submit" (click)="saveJd()">Save</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  } <!-- end applications tab -->
+
+  <!-- ── Email Test tab ─────────────────────────────────── -->
+  @if (activeTab === 'emailTest') {
+    <div class="email-test-wrap">
+
+      <!-- Form -->
+      <div class="et-card">
+        <h3 class="et-card-title">Simulate Incoming Email</h3>
+
+        <div class="et-field">
+          <label class="et-label">Subject</label>
+          <input class="et-input" type="text" [(ngModel)]="emailForm.subject" placeholder="e.g. Interview invitation – Senior PM at Stripe" />
+        </div>
+
+        <div class="et-field">
+          <label class="et-label">Sender Email</label>
+          <input class="et-input" type="email" [(ngModel)]="emailForm.sender" placeholder="e.g. recruiter@stripe.com" />
+        </div>
+
+        <div class="et-field">
+          <label class="et-label">Email Body</label>
+          <textarea class="et-textarea" rows="7" [(ngModel)]="emailForm.body" placeholder="Paste the email body here…"></textarea>
+        </div>
+
+        <div class="et-actions">
+          @if (emailError) {
+            <span class="et-error">{{ emailError }}</span>
+          }
+          <button class="et-submit-btn" (click)="processEmail()" [disabled]="emailLoading">
+            @if (emailLoading) {
+              <span class="et-spinner"></span> Processing…
+            } @else {
+              Process Email
+            }
+          </button>
+        </div>
+      </div>
+
+      <!-- Results -->
+      @if (emailResult) {
+
+        @if (!emailResult.classification) {
+          <div class="et-not-job-related">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            This email was not classified as job-related.
+          </div>
+        } @else {
+
+          <!-- 1. Classification -->
+          <div class="et-card">
+            <h4 class="et-section-title">Classification</h4>
+            <div class="et-kv-grid">
+              <div class="et-kv-row"><span class="et-kv-key">Company</span><span class="et-kv-val">{{ emailResult.classification.company }}</span></div>
+              <div class="et-kv-row"><span class="et-kv-key">Job Title</span><span class="et-kv-val">{{ emailResult.classification.jobTitle }}</span></div>
+              <div class="et-kv-row"><span class="et-kv-key">Status</span><span class="et-kv-val">{{ emailResult.classification.applicationStatus }}</span></div>
+              @if (emailResult.classification.recruiterName) {
+                <div class="et-kv-row"><span class="et-kv-key">Recruiter</span><span class="et-kv-val">{{ emailResult.classification.recruiterName }}</span></div>
+              }
+              @if (emailResult.classification.recruiterEmail) {
+                <div class="et-kv-row"><span class="et-kv-key">Recruiter Email</span><span class="et-kv-val">{{ emailResult.classification.recruiterEmail }}</span></div>
+              }
+              @if (emailResult.classification.referral) {
+                <div class="et-kv-row"><span class="et-kv-key">Referral</span><span class="et-kv-val">{{ emailResult.classification.referral }}</span></div>
+              }
+              @if (emailResult.classification.roleCategory) {
+                <div class="et-kv-row"><span class="et-kv-key">Role Category</span><span class="et-kv-val">{{ emailResult.classification.roleCategory }}</span></div>
+              }
+              @if (emailResult.classification.interviewDateAndTime) {
+                <div class="et-kv-row"><span class="et-kv-key">Interview Date</span><span class="et-kv-val">{{ emailResult.classification.interviewDateAndTime }}</span></div>
+              }
+              @if (emailResult.classification.updateSummary) {
+                <div class="et-kv-row et-kv-row--full"><span class="et-kv-key">Update Summary</span><span class="et-kv-val">{{ emailResult.classification.updateSummary }}</span></div>
+              }
+            </div>
+          </div>
+
+          <!-- 2. Candidates Found -->
+          <div class="et-card">
+            <h4 class="et-section-title">Candidates Found</h4>
+            @if (!emailResult.candidatesFound.length) {
+              <p class="et-empty">No existing applications found at this company.</p>
+            } @else {
+              <table class="et-candidates-table">
+                <thead>
+                  <tr>
+                    <th>Job Title</th>
+                    <th>Status</th>
+                    <th>Last Updated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (c of emailResult.candidatesFound; track c.id) {
+                    <tr>
+                      <td>{{ c.jobTitle }}</td>
+                      <td><span class="status-badge" [class]="getStatusClass(c.applicationStatus)">{{ c.applicationStatus }}</span></td>
+                      <td>{{ formatDisplayDate(c.updatedAt) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+
+          <!-- 3. Merge Decision -->
+          <div class="et-card">
+            <h4 class="et-section-title">Merge Decision</h4>
+            <div class="et-merge-action">
+              <span class="et-action-badge et-action-badge--{{ emailResult.mergeDecision.action.toLowerCase() }}">
+                {{ emailResult.mergeDecision.action }}
+              </span>
+            </div>
+
+            @if (emailResult.mergeDecision.fieldsToSet && $any(emailResult.mergeDecision.fieldsToSet | keyvalue).length) {
+              <div class="et-merge-section">
+                <span class="et-merge-label">Fields to Set</span>
+                <div class="et-kv-grid">
+                  @for (entry of emailResult.mergeDecision.fieldsToSet | keyvalue; track entry.key) {
+                    <div class="et-kv-row"><span class="et-kv-key">{{ formatFieldKey(entry.key) }}</span><span class="et-kv-val">{{ entry.value }}</span></div>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (emailResult.mergeDecision.fieldsToClear.length) {
+              <div class="et-merge-section">
+                <span class="et-merge-label">Fields to Clear</span>
+                <div class="et-clear-list">
+                  @for (f of emailResult.mergeDecision.fieldsToClear; track f) {
+                    <span class="et-clear-tag">{{ formatFieldKey(f) }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            <p class="et-reasoning">{{ emailResult.mergeDecision.reasoning }}</p>
+          </div>
+
+        }
+      }
+
+    </div>
+  }
+
+</div>
+
+<!-- CV dropdown (fixed, outside table) -->
+@if (cvDropdown) {
+  <div class="cv-dropdown-menu"
+       [style.top.px]="cvDropdown.top"
+       [style.left.px]="cvDropdown.left"
+       (click)="$event.stopPropagation()">
+    <div class="cv-dropdown-header">Select CV</div>
+    @for (cv of cvNames; track cv.id) {
+      <button class="cv-dropdown-item"
+              [class.cv-item-selected]="getAppById(cvDropdown.id)?.cvId === cv.id"
+              (mousedown)="selectCv(getAppById(cvDropdown.id)!, cv.id)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <span class="cv-item-name">{{ cv.name }}</span>
+        @if (cv.isDefaultCv) {
+          <span class="cv-default-badge">Default</span>
+        }
+        @if (getAppById(cvDropdown.id)?.cvId === cv.id) {
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 ml-auto">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        }
+      </button>
+    }
+    @if (!cvNames.length) {
+      <p class="cv-dropdown-empty">No CVs uploaded yet</p>
+    }
+    <div class="cv-dropdown-divider"></div>
+    <button class="cv-dropdown-upload" (mousedown)="triggerCvUpload(cvDropdown.id, $event)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      Upload new CV…
+    </button>
+  </div>
+}
+
+<!-- Hidden CV file input -->
+<input #cvFileInput type="file" accept=".pdf,.doc,.docx" class="hidden" (change)="onCvFileSelected($event)">
+
+<!-- Timeline drawer -->
+@if (timelineApp) {
+  <div class="timeline-backdrop" (click)="timelineApp = null"></div>
+  <div class="timeline-drawer" (click)="$event.stopPropagation()">
+    <div class="timeline-drawer-header">
+      <div>
+        <div class="timeline-drawer-company">{{ timelineApp.company }}</div>
+        <div class="timeline-drawer-title">{{ timelineApp.jobTitle }}</div>
+      </div>
+      <button class="timeline-close-btn" (click)="timelineApp = null">✕</button>
+    </div>
+    <div class="timeline-entries">
+      @for (update of timelineApp.updates; track update.timestamp) {
+        <div class="timeline-entry">
+          <div class="timeline-dot"></div>
+          <div class="timeline-entry-body">
+            <span class="timeline-entry-date">{{ formatDate(update.timestamp) }}</span>
+            <p class="timeline-entry-summary">{{ update.summary }}</p>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- Notes popover (fixed, outside table) -->
+@if (notesPopover) {
+  <div class="notes-popover"
+       [style.top.px]="notesPopover.top"
+       [style.left.px]="notesPopover.left"
+       (click)="$event.stopPropagation()">
+    <textarea class="notes-popover-textarea"
+              [(ngModel)]="notesPopover.draft"
+              placeholder="Recruiter call notes, salary discussed, follow-up reminders..."
+              rows="4"
+              autofocus>
+    </textarea>
+    <div class="notes-popover-footer">
+      <button class="notes-save-btn"
+              (click)="saveNotesFromPopover(getAppById(notesPopover.id)!)"
+              title="Save">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Save
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Category dropdown (fixed, outside table) -->
+@if (categoryDropdown) {
+  <div class="status-dropdown-menu"
+       [style.top.px]="categoryDropdown.top"
+       [style.left.px]="categoryDropdown.left"
+       (click)="$event.stopPropagation()">
+    @for (cat of roleCategories; track cat) {
+      <button class="status-dropdown-item" style="color:#374151"
+              (mousedown)="selectCategory(getAppById(categoryDropdown.id)!, cat)">
+        {{ cat }}
+      </button>
+    }
+  </div>
+}
+
+<!-- Post-application insight modal -->
+@if (insightModal) {
+  <div class="insight-backdrop" (click)="insightModal = null"></div>
+  <div class="insight-modal" (click)="$event.stopPropagation()">
+
+    <!-- Modal header -->
+    <div class="insight-modal-header">
+      <div class="insight-modal-meta">
+        <span class="insight-modal-company">{{ insightModal.app.company }}</span>
+        <span class="insight-modal-title">{{ insightModal.app.jobTitle }}</span>
+      </div>
+      <div class="insight-modal-actions">
+        @if (insightModal.isStreaming) {
+          <div class="insight-streaming-badge">
+            <div class="insight-streaming-dots"><span></span><span></span><span></span></div>
+            <span>Analyzing</span>
+          </div>
+        } @else if (insightModal.result?.isStale) {
+          <button class="insight-rerun-btn" (click)="rerunFitCheck()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            Re-run (CV or JD changed)
+          </button>
+        }
+        <button class="insight-close-btn" (click)="insightModal = null">✕</button>
+      </div>
+    </div>
+
+    <!-- Score + Interview Angle -->
+    <div class="insight-hero">
+      @if (insightModal.result?.insight?.fitScore != null) {
+        <div class="insight-score-ring"
+             [style.background]="'conic-gradient(' + getFitScoreColor(insightModal.result!.insight.fitScore) + ' ' + insightModal.result!.insight.fitScore + '%, #e5e7eb 0%)'">
+          <div class="insight-score-inner">
+            <span class="insight-score-num" [style.color]="getFitScoreColor(insightModal.result!.insight.fitScore)">
+              {{ insightModal.result!.insight.fitScore }}
+            </span>
+            <span class="insight-score-pct">%</span>
+          </div>
+        </div>
+      } @else {
+        <div class="insight-score-ring insight-skel-ring"></div>
+      }
+      <div class="insight-angle">
+        <span class="insight-section-label">Interview Positioning</span>
+        @if (insightModal.result?.insight?.interviewAngle) {
+          <p class="insight-angle-text">{{ insightModal.result!.insight.interviewAngle }}</p>
+        } @else {
+          <div class="insight-skel-lines">
+            <div class="insight-skel"></div><div class="insight-skel med"></div><div class="insight-skel short"></div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Skill Gaps + Talking Points -->
+    <div class="insight-mid">
+
+      <!-- Skill Gaps -->
+      <div class="insight-panel">
+        <span class="insight-section-label">Skill Gaps to Address</span>
+        @if (insightModal.result?.insight?.skillGaps?.length) {
+          <div class="insight-gaps-list">
+            @for (gap of insightModal.result!.insight.skillGaps; track $index) {
+              <div class="insight-gap-item">
+                <div class="insight-gap-top">
+                  <span class="insight-gap-skill">{{ gap.skill }}</span>
+                  <span class="insight-priority-badge" [class]="getPriorityClass(gap.priority)">{{ gap.priority }}</span>
+                </div>
+                <p class="insight-gap-action">{{ gap.action }}</p>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="insight-skel-lines">
+            @for (i of [1,2,3]; track i) { <div class="insight-skel item"></div> }
+          </div>
+        }
+      </div>
+
+      <!-- Talking Points -->
+      <div class="insight-panel">
+        <span class="insight-section-label">Your Strongest Talking Points</span>
+        @if (insightModal.result?.insight?.talkingPoints?.length) {
+          <ul class="insight-talking-list">
+            @for (point of insightModal.result!.insight.talkingPoints; track $index) {
+              <li class="insight-talking-item">{{ point }}</li>
+            }
+          </ul>
+        } @else {
+          <div class="insight-skel-lines">
+            @for (i of [1,2,3]; track i) { <div class="insight-skel item"></div> }
+          </div>
+        }
+      </div>
+
+    </div>
+
+    <!-- Red Flags -->
+    @if (insightModal.result?.insight?.redFlags?.length) {
+      <div class="insight-panel insight-panel--full">
+        <span class="insight-section-label">Potential Interview Red Flags</span>
+        <div class="insight-redflag-list">
+          @for (flag of insightModal.result!.insight.redFlags; track $index) {
+            <div class="insight-redflag-item">
+              <div class="insight-redflag-gap">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                {{ flag.gap }}
+              </div>
+              <div class="insight-redflag-tip">
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                {{ flag.tip }}
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+  </div>
+}
+
+<!-- Status dropdown (fixed, outside table) -->
+@if (statusDropdown) {
+  <div class="status-dropdown-menu"
+       [style.top.px]="statusDropdown.top"
+       [style.left.px]="statusDropdown.left"
+       (click)="$event.stopPropagation()">
+    @for (s of statuses; track s) {
+      <button class="status-dropdown-item" [class]="getStatusClass(s)"
+              (mousedown)="selectStatus(getAppById(statusDropdown.id)!, s)">
+        {{ s }}
+      </button>
+    }
+  </div>
+}

@@ -1,0 +1,301 @@
+<div class="flex flex-col h-full p-6 gap-4 box-border bg-slate-50">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-bold text-slate-800 m-0">Job Listings</h2>
+      <p class="text-xs text-slate-400 mt-0.5 m-0">Jobs fetched by the scheduler, analyzed for your profile</p>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="flex items-center gap-3 flex-wrap">
+    <div class="search-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 shrink-0">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" class="bg-transparent border-none outline-none text-sm w-52 text-slate-700 placeholder:text-slate-400"
+             [(ngModel)]="searchQuery" placeholder="Search company, title, location…" />
+    </div>
+  </div>
+
+  <!-- Table -->
+  @if (loading) {
+    <div class="flex-1 flex items-center justify-center text-slate-400 text-sm">Loading listings…</div>
+  } @else {
+    <div class="flex-1 overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table class="w-full border-collapse">
+        <thead class="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
+          <tr>
+            <th class="th-cell sortable w-80" (click)="setSort('employerName')">
+              Opportunity
+              <span class="sort-icon">{{ sortField === 'employerName' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
+            </th>
+            <th class="th-cell sortable" (click)="setSort('jobLocation')">
+              Location
+              <span class="sort-icon">{{ sortField === 'jobLocation' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
+            </th>
+            <th class="th-cell sortable" (click)="setSort('roleCategory')">
+              Category
+              <span class="sort-icon">{{ sortField === 'roleCategory' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
+            </th>
+            <th class="th-cell sortable" (click)="setSort('jobPostedAt')">
+              Posted
+              <span class="sort-icon">{{ sortField === 'jobPostedAt' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
+            </th>
+            <th class="th-cell">Fit Score</th>
+            <th class="th-cell">Apply</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (listing of filteredListings; track listing.id) {
+            <tr class="app-row group cursor-pointer" (click)="openListing(listing)">
+
+              <!-- Opportunity: avatar + employer / title stack -->
+              <td class="td-cell">
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="company-avatar shrink-0">{{ getInitials(listing.employerName) }}</span>
+                  <div class="flex flex-col min-w-0">
+                    <span class="font-semibold text-sm text-slate-800 truncate">{{ listing.employerName || '—' }}</span>
+                    <span class="text-xs text-slate-400 truncate">{{ listing.jobTitle || '—' }}</span>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Location -->
+              <td class="td-cell">
+                <span class="text-sm text-slate-600">{{ listing.jobLocation || '—' }}</span>
+              </td>
+
+              <!-- Category -->
+              <td class="td-cell">
+                <span class="text-sm text-slate-600">{{ listing.roleCategory || '—' }}</span>
+              </td>
+
+              <!-- Posted -->
+              <td class="td-cell">
+                <span class="text-sm text-slate-500">{{ formatPostedDate(listing.jobPostedAt) }}</span>
+              </td>
+
+              <!-- Fit Score -->
+              <td class="td-cell">
+                @if (listing.fitAnalysis) {
+                  <span class="fit-badge" [class]="getScoreClass(listing.fitAnalysis.fitScore)">
+                    {{ listing.fitAnalysis.fitScore }}%
+                    <span class="fit-label">{{ getScoreLabel(listing.fitAnalysis.fitScore) }}</span>
+                  </span>
+                } @else {
+                  <span class="text-slate-300 text-sm">—</span>
+                }
+              </td>
+
+              <!-- Apply -->
+              <td class="td-cell">
+                @if (listing.jobApplyLink) {
+                  <button class="apply-btn" (click)="applyNow(listing.jobApplyLink, $event)">
+                    Apply
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                  </button>
+                } @else {
+                  <span class="text-slate-300 text-sm">—</span>
+                }
+              </td>
+
+            </tr>
+          }
+
+          @if (!filteredListings.length) {
+            <tr>
+              <td colspan="6" class="text-center text-slate-400 text-sm py-16">
+                @if (searchQuery) {
+                  No listings match your search.
+                } @else {
+                  No job listings yet. The scheduler will populate them automatically.
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+</div>
+
+<!-- Detail Modal -->
+@if (selectedListing) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="company-avatar-lg">{{ getInitials(selectedListing.employerName) }}</span>
+          <div class="min-w-0">
+            <h3 class="modal-title">{{ selectedListing.jobTitle }}</h3>
+            <p class="modal-subtitle">
+              {{ selectedListing.employerName }}
+              @if (selectedListing.jobLocation) { · {{ selectedListing.jobLocation }} }
+              @if (selectedListing.roleCategory) { · {{ selectedListing.roleCategory }} }
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          @if (selectedListing.jobApplyLink) {
+            <button class="apply-btn-lg" (click)="applyNow(selectedListing.jobApplyLink, $event)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              Apply Now
+            </button>
+          }
+          <button class="close-btn" (click)="closeModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bento Grid Body -->
+      <div class="modal-body">
+        <div class="bento-grid">
+
+          @if (selectedListing.fitAnalysis; as fa) {
+
+            <!-- Score Cell (span 4) -->
+            <div class="bento-cell score-cell" [class]="'score-cell-' + getScoreCategory(fa.fitScore)">
+              <span class="cell-label">Match Score</span>
+              <div class="score-content">
+                <div class="score-ring-wrap">
+                  <div class="score-ring"
+                       [style.background]="getScoreGradient(fa.fitScore)"
+                       [style.box-shadow]="getScoreGlow(fa.fitScore)">
+                    <div class="score-inner">
+                      <span class="score-num" [style.color]="getScoreColor(fa.fitScore)">{{ fa.fitScore }}</span>
+                      <span class="score-pct">%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="score-verdict"
+                     [class.verdict-high]="fa.fitScore >= 70"
+                     [class.verdict-med]="fa.fitScore >= 40 && fa.fitScore < 70"
+                     [class.verdict-low]="fa.fitScore < 40">
+                  {{ fa.fitScore >= 70 ? 'Strong Fit' : fa.fitScore >= 40 ? 'Moderate Fit' : 'Weak Fit' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Positioning Cell (span 8) -->
+            <div class="bento-cell positioning-cell">
+              <span class="cell-label">Strategic Positioning</span>
+              @if (fa.positioningAngle) {
+                <p class="positioning-text">{{ fa.positioningAngle }}</p>
+              } @else {
+                <p class="text-slate-400 text-sm italic">No positioning data available.</p>
+              }
+            </div>
+
+            <!-- Strengths (span 6) -->
+            <div class="bento-cell strengths-cell">
+              <span class="cell-label">Core Strengths</span>
+              @if (fa.strengths.length) {
+                <ul class="bento-list">
+                  @for (s of fa.strengths; track s.strength) {
+                    <li class="strength-item">
+                      <span class="insight-text">{{ s.strength }}</span>
+                      <span class="category-chip">{{ s.category }}</span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="text-slate-400 text-sm italic">None identified.</p>
+              }
+            </div>
+
+            <!-- Gaps (span 6) -->
+            <div class="bento-cell gaps-cell">
+              <span class="cell-label">Skill Gaps</span>
+              @if (fa.gaps.length) {
+                <ul class="bento-list">
+                  @for (g of fa.gaps; track g.gap) {
+                    <li class="gap-item">
+                      <div class="gap-item-top">
+                        <span class="insight-text">{{ g.gap }}</span>
+                        <span class="severity-badge severity-{{ g.severity.toLowerCase() }}">{{ g.severity }}</span>
+                      </div>
+                      <span class="category-chip">{{ g.category }}</span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="text-slate-400 text-sm italic">None identified.</p>
+              }
+            </div>
+
+            <!-- CV Adjustments (span 12) -->
+            @if (fa.cvAdjustments.length) {
+              <div class="bento-cell adjustments-cell">
+                <span class="cell-label">CV Adjustments</span>
+                <div class="adjustments-list">
+                  @for (adj of fa.cvAdjustments; track adj.adjustment) {
+                    <div class="adjustment-item">
+                      <div class="adjustment-item-top">
+                        <span class="adjustment-text">{{ adj.adjustment }}</span>
+                        <span class="priority-badge priority-{{ adj.priority.toLowerCase() }}">{{ adj.priority }}</span>
+                      </div>
+                      @if (adj.addressesGap) {
+                        <p class="addresses-gap">Addresses: {{ adj.addressesGap }}</p>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+          } @else {
+
+            <!-- No fit analysis banner (span 12) -->
+            <div class="bento-cell no-analysis-cell">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span class="text-slate-500 text-sm">No fit analysis available for this listing yet.</span>
+            </div>
+
+          }
+
+          <!-- Qualifications (span 6) -->
+          @if (selectedListing.qualifications.length) {
+            <div class="bento-cell">
+              <span class="cell-label">Qualifications</span>
+              <ul class="insight-list">
+                @for (q of selectedListing.qualifications; track q) {
+                  <li class="insight-item qual-item">{{ q }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          <!-- Responsibilities (span 6) -->
+          @if (selectedListing.responsibilities.length) {
+            <div class="bento-cell">
+              <span class="cell-label">Responsibilities</span>
+              <ul class="insight-list">
+                @for (r of selectedListing.responsibilities; track r) {
+                  <li class="insight-item resp-item">{{ r }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+}
