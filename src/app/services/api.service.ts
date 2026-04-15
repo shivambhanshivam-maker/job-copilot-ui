@@ -36,9 +36,20 @@ export interface AdjustmentItem {
   adjustment: string;
   priority: 'High' | 'Medium' | 'Low';
   addressesGap: string | null;
+  action: 'rewrite' | 'add' | 'remove';
+  cvPoint: string | null;
+  suggestedText: string | null;
+}
+
+export interface AdjustmentStatePayload {
+  state: 'applied' | 'dismissed';
+  cvPoint: string | null;
+  suggestedText: string | null;
+  adjustment: string;
 }
 
 export interface MatchResult {
+  id?: string;
   fitScore?: number;
   recommendation?: 'Apply' | 'Apply with changes' | 'Low priority';
   confidence?: 'High' | 'Medium' | 'Low';
@@ -274,6 +285,14 @@ export class ApiService {
     return this.http.get(`${this.baseUrl}cvs/${cvId}/text`, { responseType: 'text' });
   }
 
+  getCvMarkdown(cvId: string): Observable<string> {
+    return this.http.get(`${this.baseUrl}cvs/${cvId}/markdown`, { responseType: 'text' });
+  }
+
+  updateCvContent(cvId: string, contentMarkdown: string): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}cvs/${cvId}/content`, { contentMarkdown });
+  }
+
   uploadCv(file: File, name?: string): Observable<Cv> {
     const formData = new FormData();
     formData.append('file', file);
@@ -463,6 +482,51 @@ export class ApiService {
         }
       });
 
+      return () => abortController.abort();
+    });
+  }
+
+  getFitAnalysis(id: string): Observable<MatchResult> {
+    return this.http.get<MatchResult>(`${this.baseUrl}fit-analyses/${id}`);
+  }
+
+  reanalyze(fitAnalysisId: string, states?: AdjustmentStatePayload[]): Observable<string> {
+    return new Observable<string>(observer => {
+      const abortController = new AbortController();
+      const token = localStorage.getItem('jwt_token');
+      const body = states?.length ? JSON.stringify({ states }) : undefined;
+      fetch(`${this.baseUrl}fit-analyses/${fitAnalysisId}/reanalyze`, {
+        method: 'POST',
+        headers: {
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body,
+        signal: abortController.signal
+      }).then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        const read = (): void => {
+          reader.read().then(({ done, value }) => {
+            if (done) { this.zone.run(() => observer.complete()); return; }
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              if (line.startsWith('data:')) {
+                const content = line.substring(5);
+                if (content.length > 0) this.zone.run(() => observer.next(content));
+              }
+            }
+            read();
+          }).catch(err => { this.zone.run(() => observer.error(err)); });
+        };
+        read();
+      }).catch(err => {
+        if (err.name !== 'AbortError') this.zone.run(() => observer.error(err));
+      });
       return () => abortController.abort();
     });
   }

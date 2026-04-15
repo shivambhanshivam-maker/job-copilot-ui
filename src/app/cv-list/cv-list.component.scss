@@ -6,12 +6,13 @@
   box-sizing: border-box;
 }
 
+// ── List panel ────────────────────────────────────────────
 .list-panel {
-  width: 450px;
-  min-width: 450px;
+  width: 340px;
+  min-width: 340px;
   background: #fff;
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1.25rem;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
@@ -28,8 +29,8 @@
 }
 
 .panel-title {
-  font-size: 1.15rem;
-  font-weight: 600;
+  font-size: 1.05rem;
+  font-weight: 700;
   color: #1a1a2e;
   margin: 0;
 }
@@ -46,17 +47,12 @@
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  font-family: inherit;
   transition: background 0.2s;
   white-space: nowrap;
 
-  &:hover:not(:disabled) {
-    background: #4338ca;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  &:hover:not(:disabled) { background: #4338ca; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 .cv-list {
@@ -65,14 +61,14 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .cv-item {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.7rem 0.75rem;
+  padding: 0.65rem 0.75rem;
   border-radius: 8px;
   cursor: pointer;
   color: #444;
@@ -80,28 +76,17 @@
 
   &:hover {
     background: #f0f0f5;
-
-    .star-btn {
-      opacity: 1;
-    }
+    .star-btn { opacity: 1; }
   }
 
   &.selected {
     background: #4f46e5;
     color: #fff;
-
-    svg {
-      stroke: #fff;
-    }
-
+    svg { stroke: #fff; }
     .star-btn {
       color: rgba(255, 255, 255, 0.7);
-
-      &.is-default, &:hover:not(:disabled) {
-        color: #fff;
-      }
+      &.is-default, &:hover:not(:disabled) { color: #fff; }
     }
-
     .default-badge {
       background: rgba(255, 255, 255, 0.25);
       color: #fff;
@@ -110,7 +95,7 @@
 }
 
 .cv-name {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -119,7 +104,7 @@
 }
 
 .default-badge {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   padding: 0.1rem 0.45rem;
   border-radius: 10px;
@@ -141,44 +126,230 @@
   transition: color 0.2s, opacity 0.2s;
   flex-shrink: 0;
 
-  &.is-default {
-    color: #f59e0b;
-    opacity: 1;
-    cursor: default;
-  }
-
-  &:hover:not(:disabled):not(.is-default) {
-    color: #f59e0b;
-  }
-
-  &:disabled:not(.is-default) {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
+  &.is-default { color: #f59e0b; opacity: 1; cursor: default; }
+  &:hover:not(:disabled):not(.is-default) { color: #f59e0b; }
+  &:disabled:not(.is-default) { opacity: 0.4; cursor: not-allowed; }
 }
 
+// ── Content panel ─────────────────────────────────────────
 .content-panel {
   flex: 1;
   background: #fff;
   border-radius: 12px;
-  padding: 1.5rem;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// ── Toolbar ───────────────────────────────────────────────
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fafafa;
+  border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: #e5e7eb;
+  margin: 0 0.25rem;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 0.4rem;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #4b5563;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover { background: #e5e7eb; color: #111; }
+  &.active { background: #eef2ff; color: #4f46e5; }
+
+  &--icon {
+    font-size: 0.82rem;
+  }
+}
+
+.plain-text-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #9ca3af;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 0.15rem 0.5rem;
+  margin-right: 0.25rem;
+  cursor: default;
+}
+
+.download-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.75rem;
+  background: #f1f5f9;
+  color: #374151;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) { background: #e2e8f0; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.save-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) { background: #4338ca; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.save-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+// ── Editor area ───────────────────────────────────────────
+.editor-wrap {
+  flex: 1;
   overflow-y: auto;
+  padding: 1.5rem;
 }
 
-.cv-content {
+.editor-content {
+  outline: none;
+  min-height: 100%;
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: #1f2937;
+}
+
+.editor-content ::ng-deep .ProseMirror {
+  outline: none;
+  min-height: 400px;
+}
+
+.editor-content ::ng-deep .ProseMirror h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 1rem 0 0.4rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.25rem;
+}
+
+.editor-content ::ng-deep .ProseMirror h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0.85rem 0 0.3rem;
+}
+
+.editor-content ::ng-deep .ProseMirror h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #374151;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.editor-content ::ng-deep .ProseMirror p {
+  margin: 0.3rem 0;
+}
+
+.editor-content ::ng-deep .ProseMirror ul,
+.editor-content ::ng-deep .ProseMirror ol {
+  padding-left: 1.5rem;
+  margin: 0.3rem 0;
+  list-style: disc;
+}
+
+.editor-content ::ng-deep .ProseMirror ol {
+  list-style: decimal;
+}
+
+.editor-content ::ng-deep .ProseMirror li {
+  margin: 0.15rem 0;
+  display: list-item;
+}
+
+.editor-content ::ng-deep .ProseMirror li > p {
   margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.7;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  color: #333;
 }
 
+.editor-content ::ng-deep .ProseMirror strong {
+  font-weight: 700;
+}
+
+.editor-content ::ng-deep .ProseMirror em {
+  font-style: italic;
+}
+
+.editor-content ::ng-deep .ProseMirror p.is-editor-empty:first-child::before {
+  content: 'Start editing your CV...';
+  color: #9ca3af;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+// ── Misc ──────────────────────────────────────────────────
 .loader {
   text-align: center;
   color: #777;
-  padding: 2rem;
+  padding: 3rem;
   font-size: 0.9rem;
 }
 
@@ -187,17 +358,17 @@
   color: #999;
   font-size: 0.9rem;
   text-align: center;
-  margin-top: 2rem;
+  margin-top: 3rem;
+  padding: 2rem;
 }
 
 @media (max-width: 768px) {
   .cv-list-container {
     flex-direction: column;
   }
-
   .list-panel {
     width: 100%;
     min-width: auto;
-    max-height: 250px;
+    max-height: 220px;
   }
 }

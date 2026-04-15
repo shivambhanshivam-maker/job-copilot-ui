@@ -1,4 +1,6 @@
 <div class="cv-list-container">
+
+  <!-- Left: CV list -->
   <div class="list-panel">
     <div class="panel-header">
       <h2 class="panel-title">Your CVs</h2>
@@ -9,13 +11,7 @@
         </svg>
         Add CV
       </button>
-      <input
-        #fileInput
-        type="file"
-        accept=".pdf,.doc,.docx,.txt"
-        (change)="onFileSelected($event)"
-        hidden
-      />
+      <input #fileInput type="file" accept=".pdf,.doc,.docx,.txt" (change)="onFileSelected($event)" hidden />
     </div>
 
     @if (uploadingCv) {
@@ -23,15 +19,11 @@
     } @else if (loadingList) {
       <div class="loader">Loading CVs...</div>
     } @else if (cvNames.length === 0) {
-      <p class="empty-text">No CVs found. Upload one from the Home page.</p>
+      <p class="empty-text">No CVs yet. Click "Add CV" to upload one.</p>
     } @else {
       <ul class="cv-list">
         @for (cv of cvNames; track cv.id) {
-          <li
-            class="cv-item"
-            [class.selected]="cv.id === selectedCvId"
-            (click)="selectCv(cv)"
-          >
+          <li class="cv-item" [class.selected]="cv.id === selectedCvId" (click)="selectCv(cv)">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
@@ -45,7 +37,7 @@
               [class.is-default]="cv.id === isDefaultCvId"
               [disabled]="cv.id === isDefaultCvId || settingDefaultId === cv.id"
               (click)="setDefault(cv, $event)"
-              title="{{ cv.id === isDefaultCvId ? 'Default CV' : 'Set as default' }}"
+              [title]="cv.id === isDefaultCvId ? 'Default CV' : 'Set as default'"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                 [attr.fill]="cv.id === isDefaultCvId ? 'currentColor' : 'none'"
@@ -59,13 +51,77 @@
     }
   </div>
 
+  <!-- Right: Editor panel -->
   <div class="content-panel">
-    @if (loadingText) {
+    @if (loadingContent) {
       <div class="loader">Loading CV content...</div>
-    } @else if (cvText) {
-      <pre class="cv-content">{{ cvText }}</pre>
+    } @else if (selectedCvId) {
+
+      <!-- Toolbar -->
+      <div class="editor-toolbar">
+        <div class="toolbar-group">
+          <button class="toolbar-btn" [class.active]="isActive('heading', {level: 1})" (click)="toggleH1()" title="Heading 1">H1</button>
+          <button class="toolbar-btn" [class.active]="isActive('heading', {level: 2})" (click)="toggleH2()" title="Heading 2">H2</button>
+          <button class="toolbar-btn" [class.active]="isActive('heading', {level: 3})" (click)="toggleH3()" title="Heading 3">H3</button>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+          <button class="toolbar-btn toolbar-btn--icon" [class.active]="isActive('bold')" (click)="toggleBold()" title="Bold">
+            <strong>B</strong>
+          </button>
+          <button class="toolbar-btn toolbar-btn--icon" [class.active]="isActive('italic')" (click)="toggleItalic()" title="Italic">
+            <em>I</em>
+          </button>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+          <button class="toolbar-btn toolbar-btn--icon" [class.active]="isActive('bulletList')" (click)="toggleBulletList()" title="Bullet list">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/>
+              <circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn toolbar-btn--icon" [class.active]="isActive('orderedList')" (click)="toggleOrderedList()" title="Numbered list">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/>
+              <path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
+            </svg>
+          </button>
+        </div>
+        <div class="toolbar-spacer"></div>
+        @if (!hasMarkdown) {
+          <span class="plain-text-badge" title="This CV was uploaded as PDF or plain text. Edit and save to enable rich formatting.">Plain text</span>
+        }
+        <button class="download-btn" [disabled]="downloadingDocx || !selectedCvId" (click)="downloadDocx()" title="Download as DOCX">
+          @if (downloadingDocx) {
+            <span class="save-spinner"></span>
+          } @else {
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          }
+          .docx
+        </button>
+        <button class="save-btn" [disabled]="saving || !isDirty" (click)="saveContent()">
+          @if (saving) {
+            <span class="save-spinner"></span> Saving…
+          } @else {
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Save
+          }
+        </button>
+      </div>
+
+      <!-- TipTap editor mount -->
+      <div class="editor-wrap">
+        <div #editorEl class="editor-content"></div>
+      </div>
+
     } @else {
-      <p class="placeholder-text">Select a CV from the list to view its contents</p>
+      <p class="placeholder-text">Select a CV from the list to view and edit its contents</p>
     }
   </div>
+
 </div>

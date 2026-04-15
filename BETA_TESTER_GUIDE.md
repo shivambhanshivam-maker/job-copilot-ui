@@ -62,11 +62,54 @@ Results stream in progressively — you'll start seeing data within a few second
 | **Strategic Positioning** | How you should frame yourself when applying for this role |
 | **CV Adjustments** | Concrete edits recommended for your CV to improve your fit, prioritised by impact |
 
+---
+
+#### CV Editor
+
+If you uploaded a **DOCX or TXT** file, your CV opens in a rich text editor directly on the home page. You can format text (headings, bold, italic, bullet lists), make edits, and download an updated DOCX at any time using the `.docx` button. Use the **Save** button to persist changes to your account.
+
+> **PDF files are read-only.** Editing support for PDFs is coming soon — upload a DOCX if you want to edit your CV in-app.
+
+---
+
+#### Re-Analyse & New Analysis
+
+Once an analysis completes, the **Analyse** button is replaced by two buttons:
+
+- **Re-Analyse** — re-runs the analysis using the current CV and job description. This button is only enabled after you make a change to your CV or any of the job fields (Job Title, Company Name, or Job Description). After a re-analysis, the fit score shows a **score delta** (e.g. +4 or −2) so you can see whether your edits improved your match.
+- **+ New** — clears the job fields and results so you can start a fresh analysis for a different role. Your CV selection is kept.
+
+---
+
+#### Focus Mode — Edit CV with Adjustments
+
+In the CV Adjustments section, clicking **Edit CV with Adjustments** opens a full-screen split view:
+
+- **Left panel** — your CV in the rich text editor, so you can apply suggestions directly
+- **Right panel** — tabbed between:
+  - **Suggestions** — the full list of AI-recommended CV edits, each with a suggested rewrite you can copy
+  - **Job Description** — the JD for reference while editing
+
+Each suggestion has two action buttons:
+- **Applied** — mark a suggestion as applied to your CV
+- **Dismissed** — mark a suggestion as not relevant
+
+These states are passed to the AI on the next Re-Analyse, so it knows what you've already acted on and can give more targeted suggestions in subsequent rounds.
+
+When you're done editing, click **Save & Re-Analyse** (only enabled once you've made a change) to save your CV and immediately kick off a new analysis. Or click **Back to Analysis** to return without re-analysing.
+
+> Note: CV Adjustments and Focus Mode are only available for DOCX/TXT files. PDFs are read-only.
+
+---
+
 **Things to test:**
 - Try with a JD that's a strong match and one that's a weak match — does the score feel accurate?
 - Does the streaming feel smooth, or does it stall?
 - Are the CV Adjustments and Skill Gaps actionable and relevant?
 - Try uploading different CV formats (PDF, DOCX, TXT)
+- Edit your CV and check that Re-Analyse only becomes clickable after a change
+- Use Focus Mode: mark some suggestions as Applied or Dismissed, then Re-Analyse — do the next suggestions reflect what you already acted on?
+- Check the score delta after Re-Analyse — does it reflect the direction of your edits?
 
 ---
 
@@ -175,6 +218,8 @@ A high-level view of how your job search is performing — across your entire hi
 - CV fit analysis works best with clearly structured job descriptions; very short or vague JDs may produce lower-confidence results
 - The app currently supports English-language CVs and JDs only
 - Mobile layout is not optimised — please test on desktop
+- PDF CV editing is not yet supported — upload a DOCX file to use the in-app editor, Focus Mode, and CV Adjustments
+- Applied / Dismissed states for CV Adjustments are session-only — they reset if you refresh the page
 
 ---
 
