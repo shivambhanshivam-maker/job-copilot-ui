@@ -48,6 +48,39 @@ export class AnalyticsComponent implements OnInit {
 
   constructor(private apiService: ApiService) {}
 
+  get analyticsSummaryTitle(): string {
+    const recent = this.performanceData?.responseRateLast30Days;
+    const allTime = this.performanceData?.responseRate;
+
+    if (recent != null && allTime != null) {
+      const differenceInPoints = Math.round((recent - allTime) * 100);
+      if (differenceInPoints >= 5) return 'Recruiter response is improving';
+      if (differenceInPoints <= -5) return 'Recent applications are getting fewer responses';
+      return 'Recruiter response is holding steady';
+    }
+
+    if ((this.funnelData?.interviews ?? 0) > 0) return 'Your application funnel is producing interviews';
+    return 'Your search baseline is taking shape';
+  }
+
+  get analyticsSummaryText(): string {
+    const recent = this.performanceData?.responseRateLast30Days;
+    const allTime = this.performanceData?.responseRate;
+
+    if (recent != null && allTime != null) {
+      const points = Math.round(Math.abs(recent - allTime) * 100);
+      if (points === 0) return 'Your recent response rate is in line with your overall search performance.';
+      const direction = recent > allTime ? 'above' : 'below';
+      return `Your recent response rate is ${points} percentage points ${direction} your all-time rate.`;
+    }
+
+    const applications = this.pipelineTotal;
+    if (applications > 0) {
+      return `${applications} tracked applications are building the evidence needed for stronger comparisons.`;
+    }
+    return 'Track applications and recruiter updates to build a reliable view of your search.';
+  }
+
   ngOnInit(): void {
     forkJoin({
       funnel: this.apiService.getFunnelConversion(),

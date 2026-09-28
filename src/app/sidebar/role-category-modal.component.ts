@@ -19,47 +19,88 @@ import { ToastService } from '../services/toast.service';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="modal-backdrop" (click)="onCancel()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
-        <h3 class="modal-title">Preferences</h3>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="preferences-title" (click)="$event.stopPropagation()">
+        <header class="preferences-header">
+          <div class="preferences-header-copy">
+            <span class="preferences-eyebrow">Your workspace</span>
+            <h2 class="modal-title" id="preferences-title">Preferences</h2>
+            <p class="preferences-subtitle">Personalize job matching and keep application updates connected.</p>
+          </div>
+          <button type="button" class="modal-close" aria-label="Close preferences" (click)="onCancel()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </header>
+
+        @if (loading) {
+          <div class="preferences-loading">
+            <span class="preferences-spinner"></span>
+            <span>Loading your preferences...</span>
+          </div>
+        } @else {
+        <div class="preferences-layout">
+          <section class="preferences-panel search-preferences">
+            <div class="panel-heading">
+              <div class="panel-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/>
+                </svg>
+              </div>
+              <div>
+                <h3>Job search profile</h3>
+                <p>Used across job discovery, fit analysis, and career intelligence.</p>
+              </div>
+            </div>
 
         <!-- Section 1: Experience Level -->
         <div class="section">
-          <span class="section-label">Experience Level</span>
+          <span class="section-label">Career stage</span>
+          <p class="section-hint">This helps tailor role suggestions and guidance.</p>
           <div class="toggle-group">
             <button
+              type="button"
               class="toggle-btn"
               [class.active]="experienceLevel === 'EARLY_CAREER'"
               (click)="experienceLevel = 'EARLY_CAREER'"
-            >Student / Early Careers</button>
+            >Student / early career</button>
             <button
+              type="button"
               class="toggle-btn"
               [class.active]="experienceLevel === 'EXPERIENCED'"
               (click)="experienceLevel = 'EXPERIENCED'"
-            >Experienced</button>
+            >Experienced professional</button>
           </div>
         </div>
 
         <!-- Section 2: Preferred Role Categories -->
         <div class="section">
-          <span class="section-label">Preferred Role Categories</span>
+          <div class="section-label-row">
+            <span class="section-label">Target role categories</span>
+            @if (selectedRoleCategoryNames.length + customCategories.length) {
+              <span class="selection-count">{{ selectedRoleCategoryNames.length + customCategories.length }} selected</span>
+            }
+          </div>
+          <p class="section-hint">Choose the role families you are actively targeting.</p>
           <div class="combobox-wrapper">
             <div class="combobox" [class.focused]="showCategoryDropdown" (click)="focusCategoryInput()">
               @for (name of selectedRoleCategoryNames; track name) {
                 <span class="chip selected-chip">
                   {{ name }}
-                  <button class="chip-remove" (click)="removeCategoryByName(name); $event.stopPropagation()">&times;</button>
+                  <button type="button" class="chip-remove" [attr.aria-label]="'Remove ' + name" (click)="removeCategoryByName(name); $event.stopPropagation()">&times;</button>
                 </span>
               }
               @for (name of customCategories; track name; let i = $index) {
                 <span class="chip custom-chip">
                   {{ name }}
-                  <button class="chip-remove custom" (click)="removeCustomCategory(i); $event.stopPropagation()">&times;</button>
+                  <button type="button" class="chip-remove custom" [attr.aria-label]="'Remove ' + name" (click)="removeCustomCategory(i); $event.stopPropagation()">&times;</button>
                 </span>
               }
               <input
                 #categoryInput
                 class="combobox-input"
                 type="text"
+                aria-label="Search or add a role category"
                 [placeholder]="selectedRoleCategoryNames.length || customCategories.length ? '' : 'Search or add a category...'"
                 [(ngModel)]="categoryQuery"
                 (focus)="showCategoryDropdown = true"
@@ -97,20 +138,27 @@ import { ToastService } from '../services/toast.service';
         </div>
 
         <!-- Section 3: Preferred Locations -->
-        <div class="section">
-          <span class="section-label">Preferred Locations</span>
+        <div class="section section--last">
+          <div class="section-label-row">
+            <span class="section-label">Preferred locations</span>
+            @if (selectedLocations.length) {
+              <span class="selection-count">{{ selectedLocations.length }} selected</span>
+            }
+          </div>
+          <p class="section-hint">Add the cities you want included in job discovery.</p>
           <div class="combobox-wrapper">
             <div class="combobox" [class.focused]="showLocationDropdown" (click)="focusLocationInput()">
               @for (loc of selectedLocations; track loc.displayName; let i = $index) {
                 <span class="chip selected-chip">
                   {{ loc.displayName }}
-                  <button class="chip-remove" (click)="removeLocation(i); $event.stopPropagation()">&times;</button>
+                  <button type="button" class="chip-remove" [attr.aria-label]="'Remove ' + loc.displayName" (click)="removeLocation(i); $event.stopPropagation()">&times;</button>
                 </span>
               }
               <input
                 #locationInput
                 class="combobox-input"
                 type="text"
+                aria-label="Search for a preferred city"
                 [placeholder]="selectedLocations.length ? '' : 'Search for a city...'"
                 [(ngModel)]="locationQuery"
                 (ngModelChange)="onLocationQueryChange($event)"
@@ -142,18 +190,37 @@ import { ToastService } from '../services/toast.service';
             }
           </div>
         </div>
+          </section>
 
         <!-- Section 4 & 5: Email Integration -->
-        <div class="section">
-          <span class="section-label">Email Integration</span>
-          <p class="section-hint">Connect Gmail or Outlook to automatically import recruiter emails. Only one account can be connected at a time.</p>
+          <section class="preferences-panel email-preferences">
+            <div class="panel-heading">
+              <div class="panel-icon panel-icon--green" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/>
+                </svg>
+              </div>
+              <div>
+                <h3>Email sync</h3>
+                <p>Import recruiter updates and keep application statuses current.</p>
+              </div>
+            </div>
+            <div class="email-guidance">
+              Connect one provider at a time. You can switch providers whenever needed.
+            </div>
 
           <div class="email-integration-row">
 
             <!-- Gmail -->
-            <div class="email-provider-card" [class.email-provider-card--active]="gmailConnected || gmailJustConnected">
+            <div class="email-provider-card" [class.email-provider-card--active]="gmailConnected || gmailJustConnected" [class.email-provider-card--warning]="gmailNeedsReconnect">
               <div class="email-provider-header">
-                <span class="email-provider-name">Gmail</span>
+                <div class="provider-identity">
+                  <span class="provider-mark provider-mark--gmail">G</span>
+                  <div>
+                    <span class="email-provider-name">Gmail</span>
+                    <span class="provider-description">Google account</span>
+                  </div>
+                </div>
                 @if (gmailConnected || gmailJustConnected) {
                   <span class="email-connected-badge">
                     <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -161,8 +228,34 @@ import { ToastService } from '../services/toast.service';
                     </svg>
                     Connected
                   </span>
+                } @else if (gmailNeedsReconnect) {
+                  <span class="email-reconnect-badge">Reconnect required</span>
                 }
               </div>
+
+              @if (gmailConnected || gmailNeedsReconnect || gmailStatus === 'ERROR') {
+                <div class="email-provider-health">
+                  <div class="sync-detail">
+                    <span class="sync-detail-label">Last successful sync</span>
+                    <strong>{{ formatSyncTime(gmailLastSuccessfulPollAt) }}</strong>
+                  </div>
+                  @if (gmailStatus === 'ERROR') {
+                    <span class="email-sync-error" [title]="gmailStatusMessage">Sync issue</span>
+                  }
+                  <div class="provider-actions">
+                    @if (gmailConnected || gmailStatus === 'ERROR') {
+                      <button type="button" class="email-sync-btn" [disabled]="gmailSyncing" (click)="syncGmailNow()">
+                        {{ gmailSyncing ? 'Syncing...' : (gmailStatus === 'ERROR' ? 'Retry sync' : 'Sync now') }}
+                      </button>
+                    }
+                    @if (gmailConnected || gmailNeedsReconnect || gmailStatus === 'ERROR') {
+                      <button type="button" class="email-disconnect-btn" [disabled]="disconnectingProvider !== null" (click)="disconnectGmail()">
+                        Disconnect
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
 
               @if (confirmConnect === 'gmail') {
                 <div class="email-switch-warning">
@@ -179,16 +272,20 @@ import { ToastService } from '../services/toast.service';
                   <button class="email-switch-cancel-btn" [disabled]="confirmSwitching" (click)="cancelConfirm()">Cancel</button>
                 </div>
               } @else if (!(gmailConnected || gmailJustConnected)) {
-                <button class="generate-btn" (click)="connectGmail()">Connect Gmail</button>
+                <button type="button" class="generate-btn" (click)="connectGmail()">{{ gmailNeedsReconnect ? 'Reconnect Gmail' : 'Connect Gmail' }}</button>
               }
             </div>
 
-            <div class="email-provider-divider">or</div>
-
             <!-- Outlook -->
-            <div class="email-provider-card" [class.email-provider-card--active]="outlookConnected || outlookJustConnected">
+            <div class="email-provider-card" [class.email-provider-card--active]="outlookConnected || outlookJustConnected" [class.email-provider-card--warning]="outlookNeedsReconnect">
               <div class="email-provider-header">
-                <span class="email-provider-name">Outlook</span>
+                <div class="provider-identity">
+                  <span class="provider-mark provider-mark--outlook">O</span>
+                  <div>
+                    <span class="email-provider-name">Outlook</span>
+                    <span class="provider-description">Microsoft account</span>
+                  </div>
+                </div>
                 @if (outlookConnected || outlookJustConnected) {
                   <span class="email-connected-badge">
                     <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -196,8 +293,34 @@ import { ToastService } from '../services/toast.service';
                     </svg>
                     Connected
                   </span>
+                } @else if (outlookNeedsReconnect) {
+                  <span class="email-reconnect-badge">Reconnect required</span>
                 }
               </div>
+
+              @if (outlookConnected || outlookNeedsReconnect || outlookStatus === 'ERROR') {
+                <div class="email-provider-health">
+                  <div class="sync-detail">
+                    <span class="sync-detail-label">Last successful sync</span>
+                    <strong>{{ formatSyncTime(outlookLastSuccessfulPollAt) }}</strong>
+                  </div>
+                  @if (outlookStatus === 'ERROR') {
+                    <span class="email-sync-error" [title]="outlookStatusMessage">Sync issue</span>
+                  }
+                  <div class="provider-actions">
+                    @if (outlookConnected || outlookStatus === 'ERROR') {
+                      <button type="button" class="email-sync-btn" [disabled]="outlookSyncing" (click)="syncOutlookNow()">
+                        {{ outlookSyncing ? 'Syncing...' : (outlookStatus === 'ERROR' ? 'Retry sync' : 'Sync now') }}
+                      </button>
+                    }
+                    @if (outlookConnected || outlookNeedsReconnect || outlookStatus === 'ERROR') {
+                      <button type="button" class="email-disconnect-btn" [disabled]="disconnectingProvider !== null" (click)="disconnectOutlook()">
+                        Disconnect
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
 
               @if (confirmConnect === 'outlook') {
                 <div class="email-switch-warning">
@@ -214,12 +337,14 @@ import { ToastService } from '../services/toast.service';
                   <button class="email-switch-cancel-btn" [disabled]="confirmSwitching" (click)="cancelConfirm()">Cancel</button>
                 </div>
               } @else if (!(outlookConnected || outlookJustConnected)) {
-                <button class="generate-btn" (click)="connectOutlook()">Connect Outlook</button>
+                <button type="button" class="generate-btn" (click)="connectOutlook()">{{ outlookNeedsReconnect ? 'Reconnect Outlook' : 'Connect Outlook' }}</button>
               }
             </div>
 
           </div>
+          </section>
         </div>
+        }
 
         <!-- Section 6: Extension Token — hidden for now -->
         <!--
@@ -247,12 +372,15 @@ import { ToastService } from '../services/toast.service';
         }
         -->
 
-        <div class="modal-actions">
-          <button class="btn cancel" (click)="onCancel()">Cancel</button>
-          <button class="btn save" (click)="onSave()" [disabled]="saving">
-            {{ saving ? 'Saving...' : 'Save' }}
-          </button>
-        </div>
+        <footer class="modal-actions">
+          <span class="modal-actions-hint">Changes affect future recommendations and insights.</span>
+          <div class="modal-action-buttons">
+            <button type="button" class="btn cancel" (click)="onCancel()">Cancel</button>
+            <button type="button" class="btn save" (click)="onSave()" [disabled]="loading || saving">
+              {{ saving ? 'Saving...' : 'Save preferences' }}
+            </button>
+          </div>
+        </footer>
       </div>
     </div>
   `,
@@ -471,6 +599,10 @@ import { ToastService } from '../services/toast.service';
       border-color: #bbf7d0;
       background: #f0fdf4;
     }
+    .email-provider-card--warning {
+      border-color: #fcd34d;
+      background: #fffbeb;
+    }
     .email-provider-header {
       display: flex;
       align-items: center;
@@ -492,6 +624,58 @@ import { ToastService } from '../services/toast.service';
       padding: 0.15rem 0.55rem;
       font-size: 0.7rem;
       font-weight: 700;
+    }
+    .email-reconnect-badge {
+      display: inline-flex;
+      align-items: center;
+      background: #fef3c7;
+      color: #b45309;
+      border-radius: 20px;
+      padding: 0.15rem 0.55rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .email-provider-health {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      color: #6b7280;
+      font-size: 0.68rem;
+    }
+    .email-sync-error {
+      color: #b45309;
+      font-weight: 700;
+    }
+    .email-sync-btn {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: #4f46e5;
+      cursor: pointer;
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+    .email-sync-btn:disabled {
+      color: #9ca3af;
+      cursor: wait;
+    }
+    .email-disconnect-btn {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: #6b7280;
+      cursor: pointer;
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+    .email-disconnect-btn:hover {
+      color: #b91c1c;
+    }
+    .email-disconnect-btn:disabled {
+      color: #9ca3af;
+      cursor: wait;
     }
     .email-provider-divider {
       display: flex;
@@ -650,6 +834,549 @@ import { ToastService } from '../services/toast.service';
       opacity: 0.5;
       cursor: default;
     }
+
+    /* Preferences workspace */
+    .modal-backdrop {
+      padding: 1rem;
+      background: rgba(15, 23, 42, 0.58);
+      backdrop-filter: blur(4px);
+      z-index: 5000;
+    }
+    .modal-card {
+      width: min(920px, calc(100vw - 2rem));
+      max-width: none;
+      max-height: min(760px, calc(100vh - 2rem));
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #dbe3ee;
+      border-radius: 12px;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+    }
+    .preferences-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1.35rem 1.6rem 1.2rem;
+      border-bottom: 1px solid #e2e8f0;
+      background: #ffffff;
+    }
+    .preferences-header-copy {
+      min-width: 0;
+    }
+    .preferences-eyebrow {
+      display: block;
+      margin-bottom: 0.25rem;
+      color: #4f46e5;
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+    .modal-title {
+      margin: 0;
+      color: #0f172a;
+      font-size: 1.45rem;
+      line-height: 1.2;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+    .preferences-subtitle {
+      margin: 0.35rem 0 0;
+      color: #64748b;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+    .modal-close {
+      width: 36px;
+      height: 36px;
+      flex: 0 0 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #64748b;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .modal-close:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #0f172a;
+    }
+    .modal-close:focus-visible,
+    .btn:focus-visible,
+    .generate-btn:focus-visible,
+    .email-sync-btn:focus-visible,
+    .email-disconnect-btn:focus-visible,
+    .toggle-btn:focus-visible {
+      outline: 2px solid #6366f1;
+      outline-offset: 2px;
+    }
+    .preferences-loading {
+      min-height: 340px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      color: #64748b;
+      font-size: 0.86rem;
+    }
+    .preferences-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #cbd5e1;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: preferences-spin 0.75s linear infinite;
+    }
+    @keyframes preferences-spin { to { transform: rotate(360deg); } }
+    .preferences-layout {
+      min-height: 0;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1.14fr) minmax(320px, 0.86fr);
+      background: #ffffff;
+    }
+    .preferences-panel {
+      min-width: 0;
+      padding: 1.45rem 1.6rem 1.6rem;
+    }
+    .email-preferences {
+      border-left: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .panel-heading {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 1.15rem;
+    }
+    .panel-heading h3 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 1rem;
+      line-height: 1.3;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+    .panel-heading p {
+      margin: 0.25rem 0 0;
+      color: #64748b;
+      font-size: 0.76rem;
+      line-height: 1.45;
+    }
+    .panel-icon {
+      width: 36px;
+      height: 36px;
+      flex: 0 0 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: #eef2ff;
+      color: #4f46e5;
+    }
+    .panel-icon--green {
+      background: #ecfdf5;
+      color: #059669;
+    }
+    .section {
+      margin: 0;
+      padding: 1rem 0;
+      border-top: 1px solid #eef2f7;
+    }
+    .section--last {
+      padding-bottom: 0;
+    }
+    .section-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .section-label {
+      margin: 0;
+      color: #334155;
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .section-hint {
+      margin: 0.25rem 0 0.65rem;
+      color: #64748b;
+      font-size: 0.73rem;
+      line-height: 1.4;
+    }
+    .selection-count {
+      color: #64748b;
+      font-size: 0.68rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .toggle-group {
+      padding: 3px;
+      gap: 3px;
+      overflow: visible;
+      border: 1px solid #dbe3ee;
+      border-radius: 8px;
+      background: #f1f5f9;
+    }
+    .toggle-btn {
+      min-height: 36px;
+      padding: 0.45rem 0.65rem;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #64748b;
+      font-size: 0.76rem;
+      font-weight: 700;
+      font-family: inherit;
+    }
+    .toggle-btn:first-child {
+      border-right: 0;
+    }
+    .toggle-btn.active {
+      background: #ffffff;
+      color: #3730a3;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+    }
+    .toggle-btn:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.7);
+      color: #334155;
+    }
+    .combobox {
+      min-height: 44px;
+      padding: 0.4rem 0.45rem;
+      gap: 0.35rem;
+      border-color: #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+    .combobox:hover {
+      border-color: #94a3b8;
+    }
+    .combobox.focused {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+    .combobox-input {
+      min-width: 130px;
+      color: #0f172a;
+      font-family: inherit;
+      font-size: 0.78rem;
+    }
+    .combobox-input::placeholder {
+      color: #94a3b8;
+    }
+    .chip {
+      min-height: 27px;
+      padding: 0.22rem 0.5rem;
+      border: 1px solid #c7d2fe;
+      border-radius: 7px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .selected-chip,
+    .custom-chip {
+      background: #eef2ff;
+      color: #3730a3;
+      border-color: #c7d2fe;
+    }
+    .chip-remove,
+    .chip-remove.custom {
+      width: 16px;
+      height: 16px;
+      justify-content: center;
+      border-radius: 4px;
+      color: #6366f1;
+      opacity: 0.8;
+    }
+    .chip-remove:hover,
+    .chip-remove.custom:hover {
+      background: #dbe3ff;
+      color: #3730a3;
+      opacity: 1;
+    }
+    .dropdown {
+      margin-top: 6px;
+      border-color: #dbe3ee;
+      border-radius: 8px;
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+      max-height: 220px;
+      z-index: 30;
+    }
+    .dropdown-item {
+      min-height: 38px;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.78rem;
+    }
+    .email-guidance {
+      margin-bottom: 0.9rem;
+      padding: 0.65rem 0.75rem;
+      border-left: 3px solid #a5b4fc;
+      background: #ffffff;
+      color: #475569;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .email-integration-row {
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+    .email-provider-divider {
+      display: none;
+    }
+    .email-provider-card {
+      width: 100%;
+      min-height: 0;
+      padding: 0.8rem;
+      gap: 0.7rem;
+      border-color: #dbe3ee;
+      border-radius: 8px;
+      background: #ffffff;
+      box-sizing: border-box;
+    }
+    .email-provider-card--active {
+      border-color: #86efac;
+      box-shadow: inset 3px 0 0 #10b981;
+      background: #ffffff;
+    }
+    .email-provider-card--warning {
+      border-color: #fbbf24;
+      box-shadow: inset 3px 0 0 #f59e0b;
+      background: #ffffff;
+    }
+    .provider-identity {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .provider-identity > div {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .provider-mark {
+      width: 30px;
+      height: 30px;
+      flex: 0 0 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      font-size: 0.8rem;
+      font-weight: 900;
+    }
+    .provider-mark--gmail {
+      background: #fef2f2;
+      color: #dc2626;
+    }
+    .provider-mark--outlook {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+    .email-provider-name {
+      color: #0f172a;
+      font-size: 0.8rem;
+      font-weight: 800;
+    }
+    .provider-description {
+      margin-top: 0.05rem;
+      color: #94a3b8;
+      font-size: 0.65rem;
+    }
+    .email-connected-badge,
+    .email-reconnect-badge {
+      border-radius: 6px;
+      padding: 0.22rem 0.45rem;
+      font-size: 0.62rem;
+      white-space: nowrap;
+    }
+    .email-provider-health {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 0.65rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid #eef2f7;
+      font-size: 0.68rem;
+    }
+    .sync-detail {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .sync-detail-label {
+      color: #94a3b8;
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+    .sync-detail strong {
+      color: #475569;
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+    .provider-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .email-sync-btn,
+    .email-disconnect-btn {
+      min-height: 30px;
+      padding: 0.35rem 0.6rem;
+      border: 1px solid #dbe3ee;
+      border-radius: 6px;
+      background: #ffffff;
+      font-family: inherit;
+      font-size: 0.68rem;
+      font-weight: 800;
+    }
+    .email-sync-btn {
+      color: #4338ca;
+    }
+    .email-sync-btn:hover:not(:disabled) {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+    }
+    .email-disconnect-btn {
+      color: #64748b;
+    }
+    .email-disconnect-btn:hover:not(:disabled) {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #b91c1c;
+    }
+    .generate-btn {
+      width: 100%;
+      min-height: 36px;
+      padding: 0.45rem 0.75rem;
+      border-radius: 7px;
+      background: #4f46e5;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+    .generate-btn:hover {
+      background: #4338ca;
+    }
+    .email-switch-warning {
+      border-radius: 7px;
+    }
+    .modal-actions {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.6rem;
+      border-top: 1px solid #e2e8f0;
+      background: #ffffff;
+    }
+    .modal-actions-hint {
+      color: #64748b;
+      font-size: 0.7rem;
+      line-height: 1.4;
+    }
+    .modal-action-buttons {
+      flex-shrink: 0;
+      display: flex;
+      gap: 0.6rem;
+    }
+    .btn {
+      min-height: 38px;
+      padding: 0.5rem 0.9rem;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      font-family: inherit;
+      font-size: 0.76rem;
+      font-weight: 800;
+    }
+    .btn.cancel {
+      border-color: #dbe3ee;
+      background: #ffffff;
+      color: #475569;
+    }
+    .btn.cancel:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+    .btn.save {
+      min-width: 144px;
+      background: #4f46e5;
+      color: #ffffff;
+    }
+    .btn.save:hover:not(:disabled) {
+      background: #4338ca;
+    }
+
+    @media (max-width: 760px) {
+      .modal-backdrop {
+        padding: 0;
+        align-items: stretch;
+      }
+      .modal-card {
+        width: 100vw;
+        max-height: 100vh;
+        min-height: 100vh;
+        border: 0;
+        border-radius: 0;
+      }
+      .preferences-header {
+        padding: 1rem;
+      }
+      .preferences-layout {
+        grid-template-columns: 1fr;
+      }
+      .preferences-panel {
+        padding: 1.1rem 1rem 1.25rem;
+      }
+      .email-preferences {
+        border-left: 0;
+        border-top: 1px solid #e2e8f0;
+      }
+      .modal-actions {
+        padding: 0.8rem 1rem;
+      }
+      .modal-actions-hint {
+        display: none;
+      }
+      .modal-action-buttons {
+        width: 100%;
+      }
+      .modal-action-buttons .btn {
+        flex: 1;
+      }
+    }
+
+    @media (max-width: 430px) {
+      .preferences-subtitle {
+        max-width: 280px;
+      }
+      .toggle-group {
+        flex-direction: column;
+      }
+      .toggle-btn {
+        width: 100%;
+      }
+      .provider-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .email-sync-btn,
+      .email-disconnect-btn {
+        width: 100%;
+      }
+    }
   `]
 })
 export class RoleCategoryModalComponent implements OnInit, OnDestroy {
@@ -673,11 +1400,22 @@ export class RoleCategoryModalComponent implements OnInit, OnDestroy {
 
   // Gmail
   gmailConnected = false;
+  gmailNeedsReconnect = false;
+  gmailStatus = 'DISCONNECTED';
+  gmailStatusMessage = '';
+  gmailLastSuccessfulPollAt: string | null = null;
+  gmailSyncing = false;
   gmailJustConnected = false;
 
   // Outlook
   outlookConnected = false;
+  outlookNeedsReconnect = false;
+  outlookStatus = 'DISCONNECTED';
+  outlookStatusMessage = '';
+  outlookLastSuccessfulPollAt: string | null = null;
+  outlookSyncing = false;
   outlookJustConnected = false;
+  disconnectingProvider: 'gmail' | 'outlook' | null = null;
 
   // Switching confirmation
   confirmConnect: 'gmail' | 'outlook' | null = null;
@@ -712,11 +1450,23 @@ export class RoleCategoryModalComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.gmailJustConnected = this.route.snapshot.queryParamMap.get('gmail') === 'connected';
     this.apiService.getGmailStatus().subscribe({
-      next: ({ connected }) => { this.gmailConnected = connected; }
+      next: ({ connected, status, message, lastSuccessfulPollAt }) => {
+        this.gmailConnected = connected;
+        this.gmailStatus = status;
+        this.gmailStatusMessage = message ?? '';
+        this.gmailLastSuccessfulPollAt = lastSuccessfulPollAt ?? null;
+        this.gmailNeedsReconnect = status === 'REAUTH_REQUIRED';
+      }
     });
     this.outlookJustConnected = this.route.snapshot.queryParamMap.get('outlook') === 'connected';
     this.apiService.getOutlookStatus().subscribe({
-      next: ({ connected }) => { this.outlookConnected = connected; }
+      next: ({ connected, status, message, lastSuccessfulPollAt }) => {
+        this.outlookConnected = connected;
+        this.outlookStatus = status;
+        this.outlookStatusMessage = message ?? '';
+        this.outlookLastSuccessfulPollAt = lastSuccessfulPollAt ?? null;
+        this.outlookNeedsReconnect = status === 'REAUTH_REQUIRED';
+      }
     });
     // this.loadToken();
     this.locationSearch$.pipe(
@@ -861,6 +1611,90 @@ export class RoleCategoryModalComponent implements OnInit, OnDestroy {
   }
 
   // --- Gmail ---
+
+  formatSyncTime(value: string | null): string {
+    if (!value) return 'Not synced yet';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? 'Not synced yet' : date.toLocaleString();
+  }
+
+  syncGmailNow(): void {
+    if (this.gmailSyncing) return;
+    this.gmailSyncing = true;
+    this.apiService.syncGmail().subscribe({
+      next: ({ connected, status, message, lastSuccessfulPollAt }) => {
+        this.gmailConnected = connected;
+        this.gmailStatus = status;
+        this.gmailStatusMessage = message ?? '';
+        this.gmailLastSuccessfulPollAt = lastSuccessfulPollAt ?? null;
+        this.gmailNeedsReconnect = status === 'REAUTH_REQUIRED';
+        this.gmailSyncing = false;
+      },
+      error: () => {
+        this.gmailSyncing = false;
+        this.toastService.show('Gmail sync could not be completed', 'error');
+      }
+    });
+  }
+
+  syncOutlookNow(): void {
+    if (this.outlookSyncing) return;
+    this.outlookSyncing = true;
+    this.apiService.syncOutlook().subscribe({
+      next: ({ connected, status, message, lastSuccessfulPollAt }) => {
+        this.outlookConnected = connected;
+        this.outlookStatus = status;
+        this.outlookStatusMessage = message ?? '';
+        this.outlookLastSuccessfulPollAt = lastSuccessfulPollAt ?? null;
+        this.outlookNeedsReconnect = status === 'REAUTH_REQUIRED';
+        this.outlookSyncing = false;
+      },
+      error: () => {
+        this.outlookSyncing = false;
+        this.toastService.show('Outlook sync could not be completed', 'error');
+      }
+    });
+  }
+
+  disconnectGmail(): void {
+    if (!window.confirm('Disconnect Gmail? New recruiter emails will no longer be imported.')) return;
+    this.disconnectingProvider = 'gmail';
+    this.apiService.disconnectGmail().subscribe({
+      next: () => {
+        this.gmailConnected = false;
+        this.gmailNeedsReconnect = false;
+        this.gmailStatus = 'DISCONNECTED';
+        this.gmailStatusMessage = '';
+        this.gmailLastSuccessfulPollAt = null;
+        this.disconnectingProvider = null;
+        this.toastService.show('Gmail disconnected', 'success');
+      },
+      error: () => {
+        this.disconnectingProvider = null;
+        this.toastService.show('Could not disconnect Gmail', 'error');
+      }
+    });
+  }
+
+  disconnectOutlook(): void {
+    if (!window.confirm('Disconnect Outlook? New recruiter emails will no longer be imported.')) return;
+    this.disconnectingProvider = 'outlook';
+    this.apiService.disconnectOutlook().subscribe({
+      next: () => {
+        this.outlookConnected = false;
+        this.outlookNeedsReconnect = false;
+        this.outlookStatus = 'DISCONNECTED';
+        this.outlookStatusMessage = '';
+        this.outlookLastSuccessfulPollAt = null;
+        this.disconnectingProvider = null;
+        this.toastService.show('Outlook disconnected', 'success');
+      },
+      error: () => {
+        this.disconnectingProvider = null;
+        this.toastService.show('Could not disconnect Outlook', 'error');
+      }
+    });
+  }
 
   connectGmail(): void {
     if (this.outlookConnected) {

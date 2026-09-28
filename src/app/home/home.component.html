@@ -2,11 +2,17 @@
 
   <!-- Header -->
   <div class="workbench-header">
+    <div>
+      <p class="workbench-greeting">Application workspace</p>
+      <h1 class="workbench-title">Fit Workbench</h1>
+      <p class="workbench-subtitle">Assess the role, strengthen your evidence, and keep the version you apply with.</p>
+    </div>
     @if (userName) {
-      <p class="workbench-greeting">Welcome back, {{ userName }}</p>
+      <div class="workbench-user">
+        <span class="workbench-user-label">Working as</span>
+        <strong>{{ userName }}</strong>
+      </div>
     }
-    <h1 class="workbench-title">CV Match Workbench</h1>
-    <p class="workbench-subtitle">Select your CV and paste a job description to get an AI-powered fit analysis</p>
   </div>
 
   <!-- Input Panel -->
@@ -14,7 +20,13 @@
 
     <!-- CV Glass Card -->
     <div class="input-card">
-      <span class="card-label">Your CV</span>
+      <div class="card-heading">
+        <span class="card-heading-index">01</span>
+        <div>
+          <span class="card-label">Your CV</span>
+          <p class="card-heading-copy">The evidence the role will be assessed against</p>
+        </div>
+      </div>
 
       <div class="cv-dropdown-wrapper">
         <button
@@ -99,7 +111,7 @@
               } @else {
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               }
-              .docx
+              <span class="cv-download-label">.docx</span>
             </button>
             <button class="cv-save-btn cv-save-btn--secondary" [disabled]="savingCv || !cvEditorDirty" (click)="saveCv()">
               @if (savingCv) { <span class="cv-save-spinner"></span> } Save
@@ -144,7 +156,7 @@
         <button
           class="analyze-btn"
           (click)="runReanalyze()"
-          [disabled]="loadingMatch || !fitAnalysisId || !analysisDirty"
+          [disabled]="loadingMatch || !fitAnalysisId"
         >
           @if (loadingMatch) {
             <span class="btn-spinner"></span>
@@ -163,7 +175,7 @@
         <button
           class="analyze-btn"
           (click)="onMatch()"
-          [disabled]="checkingEmail || loadingMatch || !selectedCvId || !jobTitle.trim() || !companyName.trim() || !jobDescription.trim()"
+          [disabled]="checkingEmail || loadingMatch || !selectedCvId || !jobTitle.trim() || !companyName.trim() || !roleCategory.trim() || !jobDescription.trim()"
         >
           @if (loadingMatch) {
             <span class="btn-spinner"></span>
@@ -181,7 +193,13 @@
 
     <!-- JD Glass Card -->
     <div class="input-card">
-      <span class="card-label">Job Description</span>
+      <div class="card-heading">
+        <span class="card-heading-index">02</span>
+        <div>
+          <span class="card-label">Target role</span>
+          <p class="card-heading-copy">The opportunity you are preparing to apply for</p>
+        </div>
+      </div>
 
       <div class="jd-meta-row">
         <input
@@ -198,6 +216,17 @@
           (ngModelChange)="jdDirty = true"
           placeholder="Company Name"
         />
+        <select
+          class="jd-meta-input jd-category-select"
+          [(ngModel)]="roleCategory"
+          (ngModelChange)="jdDirty = true"
+          [disabled]="loadingRoleCategories"
+        >
+          <option value="" disabled>{{ loadingRoleCategories ? 'Loading categories...' : 'Role category' }}</option>
+          @for (category of roleCategories; track category) {
+            <option [value]="category">{{ category }}</option>
+          }
+        </select>
       </div>
 
       <textarea
@@ -215,22 +244,44 @@
     <div class="results-wrapper" #resultsSection>
 
       <div class="results-header">
-        <span class="results-title">Analysis Results</span>
-        @if (loadingMatch) {
-          <div class="streaming-badge">
-            <div class="streaming-dots">
-              <span></span><span></span><span></span>
+        <div class="results-heading-copy">
+          <span class="results-eyebrow">Fit decision</span>
+          <h2 class="results-title">
+            {{ jobTitle || 'Role analysis' }}
+            @if (companyName) { <span>at {{ companyName }}</span> }
+          </h2>
+          <p class="results-subtitle">See what supports your fit, what needs stronger evidence, and what to change before applying.</p>
+        </div>
+        <div class="results-header-actions">
+          @if (loadingMatch) {
+            <div class="streaming-badge">
+              <div class="streaming-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <span class="streaming-label">{{ streamingStage }}</span>
             </div>
-            <span class="streaming-label">Streaming</span>
-          </div>
-        } @else if (streamingComplete) {
-          <div class="complete-badge">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            Complete
-          </div>
-        }
+          }
+          @if (applicationId) {
+            <span class="application-tracked-badge">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Application tracked
+            </span>
+          } @else if (fitAnalysisId && streamingComplete) {
+            <button class="mark-applied-btn" [disabled]="markingApplied" (click)="markAsApplied()">
+              @if (markingApplied) {
+                <span class="mark-applied-spinner"></span>
+                Saving...
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Mark as applied
+              }
+            </button>
+          }
+        </div>
       </div>
 
       <div class="bento-grid">
@@ -244,14 +295,14 @@
 
             <!-- Left: Score ring -->
             <div class="hero-score-side">
-              <span class="cell-label">Overall Fit Score</span>
+              <span class="cell-label">Fit score</span>
               @if (matchResult?.fitScore != null) {
                 <div class="score-content">
                   <div class="score-ring-wrap">
                     <div class="score-ring" [style.background]="getScoreGradient()" [style.box-shadow]="getScoreGlow()">
                       <div class="score-inner">
                         <span class="score-num" [style.color]="getScoreColor()">{{ matchResult?.fitScore }}</span>
-                        <span class="score-pct">%</span>
+                        <span class="score-pct">/ 100</span>
                       </div>
                     </div>
                   </div>
@@ -300,7 +351,7 @@
                       </svg>
                     }
                   </div>
-                  <span class="rec-action-label">Recommendation</span>
+                  <span class="rec-action-label">Recommended next step</span>
                   <span class="rec-action-text">{{ matchResult?.recommendation }}</span>
                 </div>
               } @else {
@@ -315,44 +366,15 @@
           </div>
         </div>
 
-        <!-- Score Breakdown -->
-        <div class="bento-cell subscores-cell">
-          <span class="cell-label">Score Breakdown</span>
-          @if (getSubScoreEntries().length) {
-            <div class="subscores-list">
-              @for (entry of getSubScoreEntries(); track entry.label) {
-                <div class="subscore-row">
-                  <span class="subscore-label">{{ entry.label }}</span>
-                  <div class="subscore-bar-wrap">
-                    <div class="subscore-bar-track">
-                      <div class="subscore-bar-fill"
-                           [style.width.%]="entry.score"
-                           [style.background]="getSubScoreColor(entry.score)">
-                      </div>
-                    </div>
-                    <span class="subscore-score" [style.color]="getSubScoreColor(entry.score)">{{ entry.score }}</span>
-                  </div>
-                  <span class="subscore-weight">{{ entry.weight }}%</span>
-                </div>
-              }
-            </div>
-            @if (matchResult?.weightageReasoning) {
-              <p class="weightage-note">{{ matchResult?.weightageReasoning }}</p>
-            }
-          } @else {
-            <div class="skel-items">
-              @for (i of [1,2,3,4,5]; track i) {
-                <div class="skel-line" style="height:20px"></div>
-              }
-            </div>
-          }
-        </div>
-
-        <!-- ── Row 3: Strengths & Gaps ── -->
+        <!-- ── Row 2: Strengths & Gaps ── -->
 
         <!-- Strengths -->
         <div class="bento-cell strengths-cell">
-          <span class="cell-label">Core Strengths</span>
+          <div class="result-section-heading">
+            <span class="cell-label">What already matches</span>
+            <h3>Evidence working in your favour</h3>
+            <p>These parts of your CV align with what the role is asking for.</p>
+          </div>
           @if (matchResult?.strengthAlignment?.length) {
             <ul class="bento-list">
               @for (item of matchResult?.strengthAlignment; track $index) {
@@ -371,14 +393,18 @@
 
         <!-- Gaps -->
         <div class="bento-cell gaps-cell">
-          <span class="cell-label">Skill Gaps</span>
+          <div class="result-section-heading">
+            <span class="cell-label">What to strengthen</span>
+            <h3>Missing or weak CV evidence</h3>
+            <p>These requirements are not yet demonstrated strongly enough in your CV.</p>
+          </div>
           @if (getSortedGaps().length) {
             <ul class="bento-list">
               @for (item of getSortedGaps(); track $index) {
                 <li class="gap-item">
                   <div class="gap-item-top">
                     <span class="insight-text">{{ item.gap }}</span>
-                    <span class="severity-badge severity-{{ item.severity.toLowerCase() }}">{{ item.severity }}</span>
+                    <span class="severity-badge severity-{{ (item.severity || 'medium').toLowerCase() }}">{{ item.severity || 'Pending' }}</span>
                   </div>
                   <span class="category-chip">{{ item.category }}</span>
                 </li>
@@ -391,21 +417,85 @@
           }
         </div>
 
-        <!-- ── Row 4: Differentiation (conditional) ── -->
-        @if (matchResult?.differentiation?.length) {
-          <div class="bento-cell differentiation-cell">
-            <span class="cell-label">What Makes You Stand Out</span>
-            <ul class="diff-list">
-              @for (item of matchResult?.differentiation; track $index) {
-                <li class="diff-item">{{ item }}</li>
+        <!-- Score Breakdown -->
+        <div class="bento-cell subscores-cell">
+          <div class="result-section-heading">
+            <span class="cell-label">Score breakdown</span>
+            <h3>How your fit score was calculated</h3>
+            <p>Each JD requirement is assessed against your CV. Its weight reflects how important it is for this role.</p>
+          </div>
+          @if (getSubScoreEntries().length) {
+            <div class="subscores-list">
+              @for (entry of getSubScoreEntries(); track entry.label) {
+                <div class="subscore-row">
+                  <div class="subscore-heading">
+                    <span class="subscore-label">{{ entry.label }}</span>
+                    <span class="subscore-status subscore-status--{{ entry.status.toLowerCase() }}">{{ entry.status }}</span>
+                  </div>
+                  <div class="subscore-bar-wrap">
+                    <div class="subscore-bar-track">
+                      <div class="subscore-bar-fill"
+                           [style.width.%]="entry.score"
+                           [style.background]="getSubScoreColor(entry.score)">
+                      </div>
+                    </div>
+                    <span class="subscore-score" [style.color]="getSubScoreColor(entry.score)">{{ entry.score }}/100</span>
+                    <span class="subscore-weight">{{ entry.weight }}% of score</span>
+                  </div>
+                  @if (entry.suggestion) {
+                    <p class="subscore-suggestion"><strong>Next step:</strong> {{ entry.suggestion }}</p>
+                  }
+                  <details class="subscore-details">
+                    <summary>Why this score</summary>
+                    <p><strong>Role asks:</strong> {{ entry.requirementText }}</p>
+                    @if (entry.evidenceText) {
+                      <p><strong>Your CV evidence:</strong> {{ entry.evidenceText }}</p>
+                    } @else {
+                      <p><strong>Your CV evidence:</strong> No matching evidence was found.</p>
+                    }
+                  </details>
+                </div>
               }
-            </ul>
+            </div>
+            @if (matchResult?.weightageReasoning) {
+              <p class="weightage-note">{{ matchResult?.weightageReasoning }}</p>
+            }
+          } @else {
+            <div class="skel-items">
+              @for (i of [1,2,3,4,5]; track i) {
+                <div class="skel-line" style="height:20px"></div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- ── Row 4: Differentiation (conditional) ── -->
+        @if (matchResult?.differentiation?.length || loadingMatch) {
+          <div class="bento-cell differentiation-cell">
+            <div class="result-section-heading">
+              <span class="cell-label">Distinctive evidence</span>
+              <h3>What makes your profile stand out</h3>
+            </div>
+            @if (matchResult?.differentiation?.length) {
+              <ul class="diff-list">
+                @for (item of matchResult?.differentiation; track $index) {
+                  <li class="diff-item">{{ item }}</li>
+                }
+              </ul>
+            } @else {
+              <div class="skel-lines">
+                <div class="skel-line"></div><div class="skel-line med"></div>
+              </div>
+            }
           </div>
         }
 
         <!-- ── Row 5: Positioning Angle ── -->
         <div class="bento-cell positioning-cell">
-          <span class="cell-label">Strategic Positioning</span>
+          <div class="result-section-heading">
+            <span class="cell-label">Your positioning</span>
+            <h3>How to frame your experience for this role</h3>
+          </div>
           @if (matchResult?.positioningAngle) {
             <p class="positioning-text">{{ matchResult?.positioningAngle }}@if (loadingMatch && !matchResult?.gaps?.length) {<span class="cursor">|</span>}</p>
           } @else {
@@ -420,7 +510,10 @@
         @if (matchResult?.cvAdjustments?.length || loadingMatch) {
           <div class="bento-cell adjustments-cell">
             <div class="adjustments-cell-header">
-              <span class="cell-label">CV Adjustments</span>
+              <div class="result-section-heading">
+                <span class="cell-label">Recommended changes</span>
+                <h3>Turn the analysis into a stronger CV</h3>
+              </div>
               @if (getSortedAdjustments().length && !selectedCvIsPdf) {
                 <button class="focus-mode-entry-btn" (click)="enterFocusMode()">
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -449,7 +542,7 @@
                         @else if (item.action === 'add') { + Add }
                         @else { ✕ Remove }
                       </span>
-                      <span class="priority-badge priority-{{ item.priority.toLowerCase() }}">{{ item.priority }}</span>
+                      <span class="priority-badge priority-{{ (item.priority || 'medium').toLowerCase() }}">{{ item.priority || 'Pending' }}</span>
                     </div>
 
                     <!-- Instruction -->
@@ -554,7 +647,7 @@
             } @else {
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             }
-            .docx
+            <span class="cv-download-label">.docx</span>
           </button>
           <button class="cv-save-btn cv-save-btn--secondary" [disabled]="savingCv || !cvEditorDirty" (click)="saveCv()">
             @if (savingCv) { <span class="cv-save-spinner"></span> } Save
@@ -636,7 +729,7 @@
                         @else if (item.action === 'add') { + Add }
                         @else { ✕ Remove }
                       </span>
-                      <span class="priority-badge priority-{{ item.priority.toLowerCase() }}">{{ item.priority }}</span>
+                      <span class="priority-badge priority-{{ (item.priority || 'medium').toLowerCase() }}">{{ item.priority || 'Pending' }}</span>
                     </div>
 
                     <p class="adjustment-text">{{ item.adjustment }}</p>

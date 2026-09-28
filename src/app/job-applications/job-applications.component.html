@@ -1,8 +1,12 @@
-<div class="flex flex-col h-full p-6 gap-4 box-border bg-slate-50">
+<div class="applications-page flex flex-col h-full p-6 gap-4 box-border bg-slate-50">
 
   <!-- Header -->
-  <div class="flex items-center justify-between">
-    <h2 class="text-xl font-bold text-slate-800 m-0">Job Applications</h2>
+  <div class="applications-header flex items-center justify-between">
+    <div>
+      <p class="applications-kicker">Search pipeline</p>
+      <h1 class="applications-title">Applications</h1>
+      <p class="applications-subtitle">Track every opportunity, document, and recruiter update in one place.</p>
+    </div>
     @if (activeTab === 'applications') {
       <button class="add-btn" (click)="addRow()">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -16,11 +20,17 @@
   <!-- Tabs -->
   <div class="page-tabs">
     <button class="page-tab" [class.active]="activeTab === 'applications'" (click)="activeTab = 'applications'">Applications</button>
+    <button class="page-tab" [class.active]="activeTab === 'emailReview'" (click)="openEmailReviews()">
+      Email Review
+      @if (emailReviews.length > 0) {
+        <span class="page-tab-count">{{ emailReviews.length }}</span>
+      }
+    </button>
     <button class="page-tab" [class.active]="activeTab === 'emailTest'" (click)="activeTab = 'emailTest'">Email Test</button>
   </div>
 
   <!-- Toolbar (applications tab only) -->
-  <div class="flex items-center gap-3 flex-wrap" [style.display]="activeTab === 'applications' ? 'flex' : 'none'">
+  <div class="applications-toolbar flex items-center gap-3 flex-wrap" [style.display]="activeTab === 'applications' ? 'flex' : 'none'">
     <div class="search-wrap">
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 shrink-0">
         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -42,7 +52,7 @@
 
   <!-- Table -->
   @if (loading) {
-    <div class="flex-1 overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div class="applications-table-shell flex-1 overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
       <table class="w-full border-collapse table-fixed">
         <thead class="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
           <tr>
@@ -80,7 +90,7 @@
       </table>
     </div>
   } @else {
-    <div class="flex-1 overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div class="applications-table-shell flex-1 overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
       <table class="w-full border-collapse table-fixed">
         <thead class="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
           <tr>
@@ -146,6 +156,16 @@
                         <span class="action-pill-label">· {{ getActionLabel(action) }}</span>
                         <span class="action-pill-chevron">▾</span>
                       </button>
+                    }
+                    @if (app.fitAnalysisStatus === 'PENDING') {
+                      <span class="fit-analysis-status fit-analysis-status--pending">Fit analysis pending</span>
+                    } @else if (app.fitAnalysisStatus === 'FAILED') {
+                      <span class="fit-analysis-status fit-analysis-status--failed" [title]="app.fitAnalysisError || 'Fit analysis failed'">
+                        Fit analysis failed
+                        <button type="button" (click)="retryFitAnalysis(app, $event)">
+                          {{ analysisRetryIds.has(app.id!) ? 'Retrying...' : 'Retry' }}
+                        </button>
+                      </span>
                     }
                   </div>
                 </div>
@@ -375,6 +395,31 @@
           }
         </div>
 
+        <div class="add-modal-field">
+          <label class="add-modal-label">CV <span class="add-modal-required">*</span></label>
+          <select class="add-modal-input" [class.add-modal-input--error]="addFormTouched && !addForm.cvId"
+                  [(ngModel)]="addForm.cvId">
+            <option value="">Select a CV</option>
+            @for (cv of cvNames; track cv.id) {
+              <option [value]="cv.id">{{ cv.name }}{{ cv.isDefaultCv ? ' (default)' : '' }}</option>
+            }
+          </select>
+          @if (addFormTouched && !addForm.cvId) {
+            <span class="add-modal-error">CV is required</span>
+          }
+        </div>
+
+        <div class="add-modal-field">
+          <label class="add-modal-label">Job Description <span class="add-modal-required">*</span></label>
+          <textarea class="add-modal-input add-modal-textarea"
+                    [class.add-modal-input--error]="addFormTouched && !addForm.jobDescriptionText.trim()"
+                    [(ngModel)]="addForm.jobDescriptionText"
+                    rows="6" placeholder="Paste the job description here"></textarea>
+          @if (addFormTouched && !addForm.jobDescriptionText.trim()) {
+            <span class="add-modal-error">Job description is required</span>
+          }
+        </div>
+
         <div class="add-modal-actions">
           <button class="add-modal-btn add-modal-btn--cancel" [disabled]="addSaving" (click)="showAddModal = false">Cancel</button>
           <button class="add-modal-btn add-modal-btn--submit" [disabled]="addSaving" (click)="submitNewApp()">
@@ -427,17 +472,15 @@
 
   } <!-- end applications tab -->
 
-  <!-- ── Email Test tab ─────────────────────────────────── -->
   @if (activeTab === 'emailTest') {
     <div class="email-test-wrap">
-
-      <!-- Form -->
       <div class="et-card">
         <h3 class="et-card-title">Simulate Incoming Email</h3>
+        <p class="et-test-warning">This runs the same processing path as Gmail and Outlook. It can create or update an application, or place an email in Email Review.</p>
 
         <div class="et-field">
           <label class="et-label">Subject</label>
-          <input class="et-input" type="text" [(ngModel)]="emailForm.subject" placeholder="e.g. Interview invitation – Senior PM at Stripe" />
+          <input class="et-input" type="text" [(ngModel)]="emailForm.subject" placeholder="e.g. Interview invitation - Senior PM at Stripe" />
         </div>
 
         <div class="et-field">
@@ -447,7 +490,12 @@
 
         <div class="et-field">
           <label class="et-label">Email Body</label>
-          <textarea class="et-textarea" rows="7" [(ngModel)]="emailForm.body" placeholder="Paste the email body here…"></textarea>
+          <textarea class="et-textarea" rows="7" [(ngModel)]="emailForm.body" placeholder="Paste the email body here..."></textarea>
+        </div>
+
+        <div class="et-field">
+          <label class="et-label">Message ID <span class="et-label-hint">optional; reuse it to test duplicate handling</span></label>
+          <input class="et-input" type="text" [(ngModel)]="emailForm.messageId" placeholder="Leave blank for a new test message" />
         </div>
 
         <div class="et-actions">
@@ -456,7 +504,7 @@
           }
           <button class="et-submit-btn" (click)="processEmail()" [disabled]="emailLoading">
             @if (emailLoading) {
-              <span class="et-spinner"></span> Processing…
+              <span class="et-spinner"></span> Processing...
             } @else {
               Process Email
             }
@@ -464,21 +512,17 @@
         </div>
       </div>
 
-      <!-- Results -->
       @if (emailResult) {
-
         @if (!emailResult.classification) {
           <div class="et-not-job-related">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             This email was not classified as job-related.
           </div>
         } @else {
-
-          <!-- 1. Classification -->
           <div class="et-card">
             <h4 class="et-section-title">Classification</h4>
             <div class="et-kv-grid">
-              <div class="et-kv-row"><span class="et-kv-key">Company</span><span class="et-kv-val">{{ emailResult.classification.company }}</span></div>
+              <div class="et-kv-row"><span class="et-kv-key">Company</span><span class="et-kv-val">{{ emailResult.classification.companyNameRaw || emailResult.classification.companyNameCanonical || emailResult.classification.company }}</span></div>
               <div class="et-kv-row"><span class="et-kv-key">Job Title</span><span class="et-kv-val">{{ emailResult.classification.jobTitle }}</span></div>
               <div class="et-kv-row"><span class="et-kv-key">Status</span><span class="et-kv-val">{{ emailResult.classification.applicationStatus }}</span></div>
               @if (emailResult.classification.recruiterName) {
@@ -502,20 +546,13 @@
             </div>
           </div>
 
-          <!-- 2. Candidates Found -->
           <div class="et-card">
-            <h4 class="et-section-title">Candidates Found</h4>
+            <h4 class="et-section-title">Applications Considered</h4>
             @if (!emailResult.candidatesFound.length) {
               <p class="et-empty">No existing applications found at this company.</p>
             } @else {
               <table class="et-candidates-table">
-                <thead>
-                  <tr>
-                    <th>Job Title</th>
-                    <th>Status</th>
-                    <th>Last Updated</th>
-                  </tr>
-                </thead>
+                <thead><tr><th>Job Title</th><th>Status</th><th>Last Updated</th></tr></thead>
                 <tbody>
                   @for (c of emailResult.candidatesFound; track c.id) {
                     <tr>
@@ -529,7 +566,6 @@
             }
           </div>
 
-          <!-- 3. Merge Decision -->
           <div class="et-card">
             <h4 class="et-section-title">Merge Decision</h4>
             <div class="et-merge-action">
@@ -537,7 +573,6 @@
                 {{ emailResult.mergeDecision.action }}
               </span>
             </div>
-
             @if (emailResult.mergeDecision.fieldsToSet && $any(emailResult.mergeDecision.fieldsToSet | keyvalue).length) {
               <div class="et-merge-section">
                 <span class="et-merge-label">Fields to Set</span>
@@ -548,26 +583,98 @@
                 </div>
               </div>
             }
-
-            @if (emailResult.mergeDecision.fieldsToClear.length) {
+            @if ($any(emailResult.mergeDecision.fieldsToClear)?.length) {
               <div class="et-merge-section">
                 <span class="et-merge-label">Fields to Clear</span>
                 <div class="et-clear-list">
-                  @for (f of emailResult.mergeDecision.fieldsToClear; track f) {
-                    <span class="et-clear-tag">{{ formatFieldKey(f) }}</span>
+                  @for (field of emailResult.mergeDecision.fieldsToClear; track field) {
+                    <span class="et-clear-tag">{{ formatFieldKey(field) }}</span>
                   }
                 </div>
               </div>
             }
-
             <p class="et-reasoning">{{ emailResult.mergeDecision.reasoning }}</p>
+            @if (emailResult.mergeDecision.action === 'UNRESOLVED') {
+              <p class="et-test-note">The email was saved in Email Review. Open that tab to attach it to the correct application.</p>
+            }
           </div>
-
         }
       }
-
     </div>
   }
+
+  @if (activeTab === 'emailReview') {
+    <div class="email-review-wrap">
+      <div class="email-review-heading">
+        <div>
+          <p class="email-review-eyebrow">Needs your attention</p>
+          <h3>Email Review</h3>
+          <p>These job emails could not be safely matched to one application. Choose the application they belong to.</p>
+        </div>
+      </div>
+
+      @if (emailReviewLoading) {
+        <div class="email-review-state">Loading email reviews...</div>
+      } @else if (emailReviews.length === 0) {
+        <div class="email-review-state">
+          <strong>Nothing to review</strong>
+          <span>New ambiguous job emails will appear here.</span>
+        </div>
+      } @else {
+        @for (review of emailReviews; track review.id) {
+          <article class="email-review-card">
+            <div class="email-review-card-header">
+              <div>
+                <p class="email-review-eyebrow">Job email</p>
+                <h3>{{ review.companyNameRaw || review.companyNameCanonical || 'Company not identified' }}</h3>
+                <p class="email-review-date">Received {{ formatReviewDate(review.createdAt) }}</p>
+              </div>
+              <button class="email-review-dismiss" [disabled]="emailReviewActionId === review.id"
+                      (click)="ignoreEmailReview(review)">Dismiss</button>
+            </div>
+
+            <div class="email-review-summary">
+              @if (review.jobTitle) {
+                <div><span>Role</span><strong>{{ review.jobTitle }}</strong></div>
+              }
+              @if (review.applicationStatus) {
+                <div><span>Email status</span><strong>{{ review.applicationStatus }}</strong></div>
+              }
+              @if (review.updateSummary) {
+                <div class="email-review-summary-wide"><span>Email update</span><strong>{{ review.updateSummary }}</strong></div>
+              }
+            </div>
+
+            <div class="email-review-candidates">
+              <div class="email-review-candidates-heading">
+                <h4>Which application does this belong to?</h4>
+                <span>{{ review.candidates.length }} found</span>
+              </div>
+
+              @if (review.candidates.length === 0) {
+                <p class="email-review-no-candidates">There are no current applications for this company. You can dismiss this email and add the application manually if needed.</p>
+              } @else {
+                <div class="email-review-candidate-list">
+                  @for (candidate of review.candidates; track candidate.id) {
+                    <button class="email-review-candidate" [disabled]="emailReviewActionId === review.id"
+                            (click)="resolveEmailReview(review, candidate)">
+                      <span class="email-review-candidate-main">
+                        <strong>{{ candidate.jobTitle || 'Role not specified' }}</strong>
+                        <span>{{ candidate.company }} · {{ candidate.applicationStatus || 'No status' }}</span>
+                      </span>
+                      <span class="email-review-candidate-date">{{ formatReviewDate(candidate.createdAt) }}</span>
+                      <span class="email-review-attach">Attach</span>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </article>
+        }
+      }
+    </div>
+  }
+
 
 </div>
 

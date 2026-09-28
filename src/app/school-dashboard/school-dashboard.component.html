@@ -1,0 +1,355 @@
+<div class="school-page">
+  @if (loading) {
+    <div class="school-header">
+      <span class="skeleton title-skeleton"></span>
+      <span class="skeleton sub-skeleton"></span>
+    </div>
+    <div class="metric-grid advisor-metric-grid">
+      @for (i of [1,2,3,4,5]; track i) {
+        <div class="metric-card">
+          <span class="skeleton metric-label-skeleton"></span>
+          <span class="skeleton metric-value-skeleton"></span>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="school-header">
+      <div>
+        <h1 class="page-title">{{ activeView === 'students' ? 'Student Roster' : 'Support Queue' }}</h1>
+        <p class="page-subtitle">{{ context?.schoolName || overview?.schoolName || 'Career Center Intelligence' }}</p>
+      </div>
+      @if (context) {
+        <div class="advisor-context">
+          <span class="context-label">Advisor</span>
+          <span class="context-value">{{ context.advisorName }}</span>
+          <span class="context-muted">{{ context.advisorTitle }} / {{ context.advisorRole.replace('_', ' ') }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="metric-grid advisor-metric-grid">
+      <div class="metric-card">
+        <span class="metric-label">{{ activeView === 'students' ? 'Consented students' : 'Active-search students' }}</span>
+        <span class="metric-value">{{ activeConsentedStudents() }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Need Support</span>
+        <span class="metric-value">{{ supportQueue?.items?.length || 0 }}</span>
+      </div>
+      @if (activeView === 'students') {
+        <div class="metric-card">
+          <span class="metric-label">Full visibility</span>
+          <span class="metric-value">{{ fullDetailsStudents() }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Interviewing</span>
+          <span class="metric-value">{{ studentsWithInterviews() }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Has Offer</span>
+          <span class="metric-value metric-value--green">{{ studentsWithOffers() }}</span>
+        </div>
+      }
+    </div>
+
+    @if (activeView === 'supportQueue') {
+      <div class="content-grid">
+        <section class="panel support-panel">
+          <div class="section-header">
+            <div class="section-heading">
+              <div class="section-title-row">
+                <h2 class="section-title">Student Support Queue</h2>
+                @if (supportQueue) {
+                  <span class="queue-count">{{ supportQueue.items.length }} flagged</span>
+                }
+              </div>
+              <p class="section-subtitle">Consented students actively searching and showing support signals</p>
+              <div class="visibility-legend" aria-label="Visibility details">
+                <span><strong>Full visibility</strong> &mdash; Application details are visible, including company, role title, status, and activity.</span>
+                <span><strong>Limited visibility</strong> &mdash; Overall job-search progress is visible, including applications, interviews, and offers. Company names and role titles remain private.</span>
+              </div>
+            </div>
+          </div>
+          @if (queueActionError) {
+            <p class="queue-action-error" role="alert">{{ queueActionError }}</p>
+          }
+
+          @if (supportQueue; as queue) {
+            @if (queue.items.length === 0) {
+              <p class="empty-state">No students need support right now.</p>
+            } @else {
+              <div class="queue-list">
+                @for (item of queue.items; track trackQueueItem($index, item)) {
+                  <article class="queue-item">
+                    <div class="queue-item-top">
+                      <div>
+                        <h3 class="student-name">{{ item.studentName }}</h3>
+                        <div class="student-meta">
+                          <span class="student-email">{{ item.studentEmail }}</span>
+                          <span class="last-activity">Last activity: {{ daysAgo(item.lastActivityAt) }}</span>
+                        </div>
+                      </div>
+                      <div class="queue-badges">
+                        <span class="visibility-badge visibility-{{ visibilityCss(item) }}">{{ visibilityLabel(item) }}</span>
+                        <span class="severity-badge severity-{{ item.severity.toLowerCase() }}">{{ item.severity }}</span>
+                      </div>
+                    </div>
+                    <div class="signal-list">
+                      @for (signal of item.signals; track signal.type) {
+                        <div class="signal-row">
+                          <div class="signal-copy">
+                            <span class="signal-name">{{ signalLabel(signal) }}</span>
+                            <p class="signal-reason">{{ signal.reason }}</p>
+                            <div class="signal-next-step">
+                              <span class="signal-next-step-label">Next step</span>
+                              <span>{{ signal.suggestedAction }}</span>
+                            </div>
+                          </div>
+                          <div class="signal-actions">
+                            <details
+                              class="snooze-menu"
+                              [class.snooze-menu--disabled]="queueActionLoading[supportSignalKey(item, signal)]">
+                              <summary>
+                                <svg class="signal-button-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                  <circle cx="12" cy="12" r="9"></circle>
+                                  <path d="M12 7v5l3 2"></path>
+                                </svg>
+                                {{ queueActionState[supportSignalKey(item, signal)] === 'saving'
+                                  ? 'Saving...'
+                                  : queueActionState[supportSignalKey(item, signal)] === 'success'
+                                    ? 'Snoozed'
+                                    : 'Snooze' }}
+                              </summary>
+                              <div class="snooze-options">
+                                <button type="button" (click)="snoozeSupportSignal(item, signal, '7')">For 7 days</button>
+                                <button type="button" (click)="snoozeSupportSignal(item, signal, '14')">For 14 days</button>
+                                <button type="button" (click)="snoozeSupportSignal(item, signal, '30')">For 30 days</button>
+                              </div>
+                            </details>
+                            <button
+                              class="signal-action-button"
+                              type="button"
+                              [disabled]="queueActionLoading[supportSignalKey(item, signal)]"
+                              (click)="reviewSupportSignal(item, signal)">
+                              <svg class="signal-button-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m5 12 4 4L19 7"></path>
+                              </svg>
+                              {{ queueActionState[supportSignalKey(item, signal)] === 'saving'
+                                ? 'Saving...'
+                                : queueActionState[supportSignalKey(item, signal)] === 'success'
+                                  ? 'Reviewed'
+                                  : 'Mark as reviewed' }}
+                            </button>
+                            @if (queueActionMessage[supportSignalKey(item, signal)]
+                              && queueActionMessage[supportSignalKey(item, signal)] !== 'Reviewed') {
+                              <span class="signal-action-feedback">{{ queueActionMessage[supportSignalKey(item, signal)] }}</span>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                    <div class="queue-item-footer">
+                      <button class="detail-toggle" type="button" (click)="openStudentDetails(item)">
+                        {{ detailButtonLabel(item) }}
+                        <svg class="detail-toggle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="m9 18 6-6-6-6"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </article>
+                }
+              </div>
+            }
+          } @else {
+            <p class="empty-state">No students need support right now.</p>
+          }
+        </section>
+
+        <aside class="side-panels">
+          <section class="panel">
+            <h2 class="section-title">Top Role Categories</h2>
+            @if (overview; as schoolOverview) {
+              @if (!schoolOverview.topRoleCategories.length) {
+                <p class="empty-state">No role data yet.</p>
+              } @else {
+                <div class="breakdown-list">
+                  @for (item of schoolOverview.topRoleCategories; track trackBreakdown($index, item)) {
+                    <div class="breakdown-row">
+                      <span class="breakdown-label">{{ item.label }}</span>
+                      <span class="breakdown-count">{{ item.count }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </section>
+        </aside>
+      </div>
+    }
+
+    @if (activeView === 'students') {
+      <section class="panel roster-panel">
+        <div class="section-header">
+          <div class="section-heading">
+            <div class="section-title-row">
+              <h2 class="section-title">Student Roster</h2>
+              @if (studentRoster) {
+                <span class="queue-count">{{ filteredStudentRoster().length }} / {{ studentRoster.students.length }} students</span>
+              }
+            </div>
+            <p class="section-subtitle">All active students who have consented to advisor visibility</p>
+            <div class="visibility-legend" aria-label="Visibility details">
+              <span><strong>Full visibility</strong> &mdash; Application details are visible, including company, role title, status, and activity.</span>
+              <span><strong>Limited visibility</strong> &mdash; Overall job-search progress is visible, including applications, interviews, and offers. Company names and role titles remain private.</span>
+            </div>
+          </div>
+        </div>
+
+        @if (!studentRoster || studentRoster.students.length === 0) {
+          <p class="empty-state">No consented students yet.</p>
+        } @else {
+          <div class="roster-toolbar">
+            <label class="search-field">
+              <span class="search-label">Search students</span>
+              <input
+                type="search"
+                [value]="rosterSearchTerm"
+                (input)="onRosterSearch($any($event.target).value)"
+                placeholder="Search by name, email, program, status"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+
+          @if (filteredStudentRoster().length === 0) {
+            <p class="empty-state">No students match this search.</p>
+          } @else {
+          <div class="roster-list">
+            @for (student of filteredStudentRoster(); track trackRosterItem($index, student)) {
+              <article class="roster-row">
+                <div class="roster-main">
+                  <div>
+                    <h3 class="student-name">{{ student.studentName }}</h3>
+                    <p class="student-email">{{ student.studentEmail }}</p>
+                    <p class="roster-meta">
+                      {{ student.programName || 'Program not set' }} / {{ student.cohortName || 'Cohort not set' }}
+                    </p>
+                  </div>
+                  <div class="queue-badges">
+                    <span class="visibility-badge visibility-{{ visibilityCss(student) }}">{{ visibilityLabel(student) }}</span>
+                    <span class="pipeline-badge pipeline-{{ pipelineCss(student) }}">{{ pipelineStage(student) }}</span>
+                  </div>
+                </div>
+
+                <div class="roster-stats">
+                  <span>{{ student.jobSearchStatus || 'UNKNOWN' }}</span>
+                  <span>{{ student.summary.totalApplications }} apps</span>
+                  <span>{{ student.summary.interviews }} interviews</span>
+                  <span>{{ student.summary.offers }} offers</span>
+                  <span>Last: {{ daysAgo(student.lastActivityAt) }}</span>
+                </div>
+
+                <button class="detail-toggle" type="button" (click)="openStudentDetails(student)">
+                  {{ detailButtonLabel(student) }}
+                </button>
+              </article>
+            }
+          </div>
+          }
+        }
+      </section>
+    }
+  }
+
+  @if (selectedStudent) {
+    <div class="drawer-backdrop" (click)="closeStudentDetails()"></div>
+    <aside class="student-drawer">
+      <div class="drawer-header">
+        <div>
+          <h2 class="drawer-title">{{ selectedStudent.studentName }}</h2>
+          <p class="drawer-subtitle">{{ selectedStudent.studentEmail }}</p>
+        </div>
+        <button class="drawer-close" type="button" (click)="closeStudentDetails()">×</button>
+      </div>
+
+      <div class="drawer-badges">
+        <span class="visibility-badge visibility-{{ visibilityCss(selectedStudent) }}">{{ visibilityLabel(selectedStudent) }}</span>
+        <span class="pipeline-badge pipeline-{{ pipelineCss(selectedStudent) }}">{{ pipelineStage(selectedStudent) }}</span>
+      </div>
+      <p class="drawer-visibility-description">{{ visibilityDescription(selectedStudent) }}</p>
+
+      <div class="summary-grid drawer-summary-grid">
+        <div class="summary-stat">
+          <span class="summary-label">Applications</span>
+          <span class="summary-value">{{ selectedStudent.summary.totalApplications }}</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-label">Last 30 days</span>
+          <span class="summary-value">{{ selectedStudent.summary.applicationsLast30Days }}</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-label">Responses</span>
+          <span class="summary-value">{{ selectedStudent.summary.responsesLast30Days }}</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-label">Interviews</span>
+          <span class="summary-value">{{ selectedStudent.summary.interviews }}</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-label">Offers</span>
+          <span class="summary-value">{{ selectedStudent.summary.offers }}</span>
+        </div>
+      </div>
+
+      <div class="summary-columns drawer-summary-columns">
+        <div>
+          <span class="summary-section-label">Role categories</span>
+          @if (!selectedStudent.summary.roleCategories.length) {
+            <p class="empty-state">No role category data.</p>
+          } @else {
+            <div class="mini-breakdown">
+              @for (bucket of selectedStudent.summary.roleCategories; track trackBreakdown($index, bucket)) {
+                <span>{{ bucket.label }}: {{ bucket.count }}</span>
+              }
+            </div>
+          }
+        </div>
+        <div>
+          <span class="summary-section-label">Statuses</span>
+          @if (!selectedStudent.summary.statuses.length) {
+            <p class="empty-state">No status data.</p>
+          } @else {
+            <div class="mini-breakdown">
+              @for (bucket of selectedStudent.summary.statuses; track trackBreakdown($index, bucket)) {
+                <span>{{ bucket.label }}: {{ bucket.count }}</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (visibilityLevel(selectedStudent) === 'FULL') {
+        <div class="application-section">
+          <span class="summary-section-label">Applications</span>
+          @if (applicationDetailsLoading[selectedStudent.studentUserId]) {
+            <p class="empty-state">Loading applications...</p>
+          } @else if (applicationDetailsError[selectedStudent.studentUserId]) {
+            <p class="empty-state">{{ applicationDetailsError[selectedStudent.studentUserId] }}</p>
+          } @else if (applicationDetails[selectedStudent.studentUserId]) {
+            <div class="application-list">
+              @for (app of applicationDetails[selectedStudent.studentUserId].applications; track app.id) {
+                <div class="application-row">
+                  <div>
+                    <span class="application-title">{{ app.jobTitle || 'Untitled role' }}</span>
+                    <span class="application-company">{{ app.company || 'Unknown company' }}</span>
+                  </div>
+                  <span class="application-status">{{ app.applicationStatus || 'Unknown' }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </aside>
+  }
+</div>

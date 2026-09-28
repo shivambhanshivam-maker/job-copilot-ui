@@ -2,8 +2,19 @@ import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 
-import { ApiService, CvName, MatchResult, GapItem, AdjustmentItem, AdjustmentStatePayload } from '../services/api.service';
+import {
+  ApiService,
+  CvName,
+  MatchResult,
+  StrengthItem,
+  GapItem,
+  AdjustmentItem,
+  FitRequirement,
+  RequirementEvidence,
+  AdjustmentStatePayload
+} from '../services/api.service';
 import { AuthService } from '../services/auth.service';
 import { ToastService } from '../services/toast.service';
 import { Editor } from '@tiptap/core';
@@ -25,21 +36,27 @@ export class HomeComponent implements OnInit, OnDestroy {
   cvText = '';
   jobTitle = '';
   companyName = '';
+  roleCategory = '';
+  roleCategories: string[] = [];
+  loadingRoleCategories = false;
   jobDescription = '';
   matchResult: MatchResult | null = null;
-  streamingText = '';
   streamingComplete = false;
+  streamingStage = 'Preparing analysis';
   fitAnalysisId: string | null = null;
+  applicationId: string | null = null;
+  markingApplied = false;
   previousFitScore: number | null = null;
   scoreDelta: number | null = null;
-
   loadingCvNames = false;
   loadingCvText = false;
   loadingMatch = false;
+  private awaitingAuthoritativeResult = false;
   uploadingCv = false;
   showCvDropdown = false;
 
   gmailConnected = false;
+  gmailNeedsReconnect = false;
   outlookConnected = false;
   checkingGmail = true;
   checkingOutlook = true;
@@ -95,6 +112,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadCvNames();
+    this.loadRoleCategories();
     this.checkEmailStatus();
     const gmailParam = this.route.snapshot.queryParamMap.get('gmail');
     const outlookParam = this.route.snapshot.queryParamMap.get('outlook');
@@ -116,7 +134,14 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   checkEmailStatus(): void {
     this.apiService.getGmailStatus().subscribe({
-      next: (res) => { this.gmailConnected = res.connected; this.checkingGmail = false; },
+      next: (res) => {
+        this.gmailConnected = res.connected;
+        this.gmailNeedsReconnect = res.status === 'REAUTH_REQUIRED';
+        if (this.gmailNeedsReconnect) {
+          this.toastService.show('Gmail needs to be reconnected', 'error');
+        }
+        this.checkingGmail = false;
+      },
       error: () => { this.checkingGmail = false; }
     });
     this.apiService.getOutlookStatus().subscribe({
@@ -154,6 +179,24 @@ export class HomeComponent implements OnInit, OnDestroy {
       error: () => {
         this.loadingCvNames = false;
       }
+    });
+  }
+
+  loadRoleCategories(): void {
+    this.loadingRoleCategories = true;
+    forkJoin({
+      categories: this.apiService.getRoleCategories(),
+      preferences: this.apiService.getPreferences()
+    }).subscribe({
+      next: ({ categories, preferences }) => {
+        const saved = preferences.preferredRoleCategories || [];
+        this.roleCategories = [...new Set([
+          ...saved,
+          ...categories.map(category => category.name)
+        ])].sort((a, b) => a.localeCompare(b));
+        this.loadingRoleCategories = false;
+      },
+      error: () => { this.loadingRoleCategories = false; }
     });
   }
 
@@ -431,13 +474,18 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   onMatch(): void {
-    if (this.selectedCvId === null || !this.jobTitle.trim() || !this.companyName.trim() || !this.jobDescription.trim()) {
+    if (this.selectedCvId === null || !this.jobTitle.trim() || !this.companyName.trim()
+      || !this.roleCategory.trim() || !this.jobDescription.trim()) {
       return;
     }
     this.loadingMatch = true;
+    this.awaitingAuthoritativeResult = false;
     this.matchResult = null;
-    this.streamingText = '';
+    this.fitAnalysisId = null;
     this.streamingComplete = false;
+    this.streamingStage = 'Preparing analysis';
+    this.applicationId = null;
+    this.markingApplied = false;
     this.scoreDelta = null;
     this.adjustmentStates = {};
     this.cumulativeStates = {};
@@ -448,23 +496,31 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.resultsSection?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
 
-    this.apiService.matchCvToJob(this.selectedCvId, this.jobDescription, this.jobTitle, this.companyName).subscribe({
+    this.apiService.matchCvToJob(this.selectedCvId, this.jobDescription, this.jobTitle, this.companyName, this.roleCategory).subscribe({
       next: (chunk) => {
         if (chunk.startsWith('[SAVED:')) {
-          this.fitAnalysisId = chunk.slice(7, -1);
+          const savedId = chunk.slice(7, -1);
+          this.fitAnalysisId = savedId;
+          this.awaitingAuthoritativeResult = true;
+          this.loadAuthoritativeResult(savedId);
           return;
         }
-        this.streamingText += chunk;
-        this.matchResult = this.tryParsePartialJson(this.streamingText);
-        try {
-          this.matchResult = JSON.parse(this.streamingText) as MatchResult;
-          this.streamingComplete = true;
+        if (this.isFitStreamError(chunk)) {
           this.loadingMatch = false;
-        } catch { /* still incomplete */ }
+          this.streamingComplete = true;
+          this.toastService.show('Fit analysis could not be completed. Please try again.', 'error');
+          return;
+        }
+        this.applyStreamEvent(chunk);
       },
       error: () => { this.loadingMatch = false; },
       complete: () => {
+        if (this.awaitingAuthoritativeResult) {
+          this.streamingStage = 'Loading saved analysis';
+          return;
+        }
         this.streamingComplete = true;
+        this.streamingStage = 'Finalizing analysis';
         this.loadingMatch = false;
       }
     });
@@ -472,15 +528,21 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   runReanalyze(): void {
     if (!this.fitAnalysisId) { this.onMatch(); return; }
+    if (this.cvEditorDirty && this.cvEditor && this.selectedCvId) {
+      this.saveAndReAnalyze();
+      return;
+    }
+    const analysisId = this.fitAnalysisId;
     this.previousFitScore = this.matchResult?.fitScore ?? null;
 
     Object.assign(this.cumulativeStates, this.adjustmentStates);
     const states = Object.values(this.cumulativeStates);
 
     this.loadingMatch = true;
+    this.awaitingAuthoritativeResult = false;
     this.matchResult = null;
-    this.streamingText = '';
     this.streamingComplete = false;
+    this.streamingStage = 'Preparing updated analysis';
     this.scoreDelta = null;
     this.adjustmentStates = {};
     this.jdDirty = false;
@@ -490,23 +552,75 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.resultsSection?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
 
-    this.apiService.reanalyze(this.fitAnalysisId, states.length ? states : undefined).subscribe({
+    this.apiService.reanalyze(analysisId, states.length ? states : undefined, {
+      cvId: this.selectedCvId!,
+      jobDescription: this.jobDescription,
+      jobTitle: this.jobTitle,
+      companyName: this.companyName,
+      roleCategory: this.roleCategory
+    }).subscribe({
       next: (chunk) => {
-        this.streamingText += chunk;
-        this.matchResult = this.tryParsePartialJson(this.streamingText);
-        try {
-          this.matchResult = JSON.parse(this.streamingText) as MatchResult;
-          if (this.previousFitScore !== null && this.matchResult?.fitScore != null) {
-            this.scoreDelta = this.matchResult.fitScore - this.previousFitScore;
-          }
-          this.streamingComplete = true;
+        if (chunk.startsWith('[SAVED:')) {
+          const savedId = chunk.slice(7, -1);
+          this.fitAnalysisId = savedId;
+          this.awaitingAuthoritativeResult = true;
+          this.loadAuthoritativeResult(savedId, this.previousFitScore);
+          return;
+        }
+        if (this.isFitStreamError(chunk)) {
           this.loadingMatch = false;
-        } catch { /* still incomplete */ }
+          this.streamingComplete = true;
+          this.toastService.show('Updated fit analysis could not be completed. Please try again.', 'error');
+          return;
+        }
+        this.applyStreamEvent(chunk);
       },
       error: () => { this.loadingMatch = false; },
       complete: () => {
+        if (this.awaitingAuthoritativeResult) {
+          this.streamingStage = 'Loading saved analysis';
+          return;
+        }
         this.streamingComplete = true;
+        this.streamingStage = 'Finalizing analysis';
         this.loadingMatch = false;
+      }
+    });
+  }
+
+  private loadAuthoritativeResult(id: string, previousScore: number | null = null): void {
+    this.apiService.getFitAnalysis(id).subscribe({
+      next: (result) => {
+        this.awaitingAuthoritativeResult = false;
+        this.matchResult = result;
+        this.streamingComplete = true;
+        this.streamingStage = 'Analysis complete';
+        this.loadingMatch = false;
+        if (previousScore !== null && result.fitScore != null) {
+          this.scoreDelta = result.fitScore - previousScore;
+        }
+      },
+      error: () => {
+        this.awaitingAuthoritativeResult = false;
+        this.loadingMatch = false;
+        this.toastService.show('The analysis was saved but could not be loaded', 'error');
+      }
+    });
+  }
+
+  markAsApplied(): void {
+    if (!this.fitAnalysisId || this.markingApplied || this.applicationId) return;
+
+    this.markingApplied = true;
+    this.apiService.markFitAnalysisAsApplied(this.fitAnalysisId, this.roleCategory).subscribe({
+      next: (application) => {
+        this.applicationId = application.id ?? null;
+        this.markingApplied = false;
+        this.toastService.show('Application marked as applied', 'success');
+      },
+      error: () => {
+        this.markingApplied = false;
+        this.toastService.show('Could not mark this application as applied', 'error');
       }
     });
   }
@@ -514,11 +628,15 @@ export class HomeComponent implements OnInit, OnDestroy {
   onNewAnalysis(): void {
     this.jobTitle = '';
     this.companyName = '';
+    this.roleCategory = '';
     this.jobDescription = '';
     this.matchResult = null;
     this.fitAnalysisId = null;
-    this.streamingText = '';
+    this.applicationId = null;
+    this.markingApplied = false;
     this.streamingComplete = false;
+    this.awaitingAuthoritativeResult = false;
+    this.streamingStage = 'Preparing analysis';
     this.scoreDelta = null;
     this.previousFitScore = null;
     this.adjustmentStates = {};
@@ -596,16 +714,115 @@ export class HomeComponent implements OnInit, OnDestroy {
     return '0 0 28px rgba(220,38,38,0.28), 0 4px 20px rgba(0,0,0,0.1)';
   }
 
-  getSubScoreEntries(): { label: string; score: number; weight: number }[] {
+  getSubScoreEntries(): {
+    label: string;
+    requirementText: string;
+    status: string;
+    evidenceText: string | null;
+    score: number;
+    weight: number;
+    suggestion: string | null;
+  }[] {
+    const requirements = this.matchResult?.jdRequirements ?? [];
+    if (requirements.length) {
+      const evidenceByKey = new Map(
+        (this.matchResult?.requirementEvidence ?? []).map(evidence => [evidence.requirementKey, evidence])
+      );
+      const weights = this.getRequirementWeights(requirements);
+      return requirements.map((requirement, index) => {
+        const evidence = evidenceByKey.get(requirement.requirementKey);
+        const status = evidence?.evidenceStatus ?? 'Missing';
+        const normalizedStatus = status.toLowerCase();
+        const score = normalizedStatus === 'strong' ? 100
+          : normalizedStatus === 'good' ? 75
+            : normalizedStatus === 'weak' ? 40
+              : normalizedStatus === 'partial' ? 60
+                : 0;
+        return {
+          label: requirement.capabilityPhrase || this.compactRequirement(requirement.requirementText),
+          requirementText: requirement.requirementText || '',
+          status,
+          evidenceText: evidence?.evidenceText ?? null,
+          score,
+          weight: weights[index],
+          suggestion: this.getLowScoreSuggestion(requirement, score)
+        };
+      });
+    }
+
     const ss = this.matchResult?.subScores;
     if (!ss) return [];
-    return [
-      { label: 'Skills Match',      score: ss.skillsMatch.score,     weight: ss.skillsMatch.weight },
-      { label: 'Experience Match',  score: ss.experienceMatch.score,  weight: ss.experienceMatch.weight },
-      { label: 'Domain Match',      score: ss.domainMatch.score,      weight: ss.domainMatch.weight },
-      { label: 'Impact Match',      score: ss.impactMatch.score,      weight: ss.impactMatch.weight },
-      { label: 'CV Presentation',   score: ss.cvPresentation.score,   weight: ss.cvPresentation.weight },
+    const entries = [
+      { label: 'Skills Match', score: ss.skillsMatch?.score, weight: ss.skillsMatch?.weight },
+      { label: 'Experience Match', score: ss.experienceMatch?.score, weight: ss.experienceMatch?.weight },
+      { label: 'Domain Match', score: ss.domainMatch?.score, weight: ss.domainMatch?.weight },
+      { label: 'Impact Match', score: ss.impactMatch?.score, weight: ss.impactMatch?.weight },
+      { label: 'CV Presentation', score: ss.cvPresentation?.score, weight: ss.cvPresentation?.weight },
     ];
+
+    return entries.filter(
+      (entry): entry is { label: string; score: number; weight: number } =>
+        typeof entry.score === 'number' && typeof entry.weight === 'number'
+    ).map(entry => ({
+      ...entry,
+      requirementText: entry.label,
+      status: entry.score >= 80 ? 'Strong' : entry.score >= 60 ? 'Good' : 'Missing',
+      evidenceText: null,
+      suggestion: entry.score === 0 || entry.score === 40
+        ? this.getBasicLowScoreSuggestion(entry.label, entry.score)
+        : null
+    }));
+  }
+
+  private getLowScoreSuggestion(requirement: FitRequirement, score: number): string | null {
+    if (score !== 0 && score !== 40) return null;
+
+    const capability = requirement.capabilityPhrase ?? '';
+    const target = `${capability} ${requirement.requirementText ?? ''}`.toLowerCase();
+    const relatedAdjustment = this.getSortedAdjustments().find(item => {
+      const gap = item.addressesGap?.toLowerCase() ?? '';
+      return gap.length > 0 && (target.includes(gap) || (capability.length > 0 && gap.includes(capability.toLowerCase())));
+    });
+    return relatedAdjustment?.adjustment || this.getBasicLowScoreSuggestion(
+      capability || this.compactRequirement(requirement.requirementText), score);
+  }
+
+  private getBasicLowScoreSuggestion(label: string, score: number): string {
+    if (score === 0) {
+      return `Add one truthful CV example that demonstrates ${label}, if you have that experience. Do not claim it if you do not.`;
+    }
+    return `Make the existing evidence for ${label} more concrete by showing the context, what you did, and the result.`;
+  }
+
+  private compactRequirement(text: string | null | undefined): string {
+    const normalized = (text ?? '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return 'JD requirement';
+    const firstSentence = normalized.split(/[.!?](?:\s|$)/)[0].trim();
+    return firstSentence.length <= 72 ? firstSentence : `${firstSentence.slice(0, 69).trimEnd()}...`;
+  }
+
+  private getRequirementWeights(requirements: { importanceTier: string; relevanceMode?: string; weight?: number }[]): number[] {
+    const configured = requirements.map(requirement => requirement.weight ?? 0);
+    if (configured.reduce((total, weight) => total + weight, 0) === 100) return configured;
+
+    const units = requirements.map(requirement => {
+      if (requirement.relevanceMode?.toUpperCase() === 'INFERRED') return 1;
+      switch (requirement.importanceTier?.toUpperCase()) {
+        case 'CORE': return 3;
+        case 'PREFERRED': return 2;
+        case 'SUPPORTING': return 1;
+        default: return 1;
+      }
+    });
+    const totalUnits = units.reduce((total, unit) => total + unit, 0);
+    let assigned = 0;
+    return units.map((unit, index) => {
+      const weight = index === units.length - 1
+        ? 100 - assigned
+        : Math.round(unit * 100 / totalUnits);
+      assigned += weight;
+      return weight;
+    });
   }
 
   getSubScoreColor(score: number): string {
@@ -663,42 +880,81 @@ export class HomeComponent implements OnInit, OnDestroy {
     return 'conf-low';
   }
 
-  private tryParsePartialJson(text: string): MatchResult | null {
-    const repaired = this.repairJson(text);
-    if (!repaired) return this.matchResult;
+  private applyStreamEvent(chunk: string): void {
     try {
-      return JSON.parse(repaired) as MatchResult;
+      const event = JSON.parse(chunk) as FitStreamEvent;
+      if (!event.type) return;
+
+      const current = this.matchResult ?? {};
+      switch (event.type) {
+        case 'progress':
+          this.streamingStage = event.stage ?? 'Analyzing';
+          break;
+        case 'score':
+          this.streamingStage = 'Scoring fit';
+          this.matchResult = {
+            ...current,
+            fitScore: event.fitScore,
+            recommendation: event.recommendation,
+            weightageReasoning: event.weightageReasoning
+          };
+          break;
+        case 'strengths':
+          this.streamingStage = 'Reviewing strengths';
+          this.matchResult = {
+            ...current,
+            strengthAlignment: event.strengths ?? [],
+            differentiation: event.differentiation ?? []
+          };
+          break;
+        case 'gaps':
+          this.streamingStage = 'Reviewing gaps';
+          this.matchResult = { ...current, gaps: event.gaps ?? [] };
+          break;
+        case 'breakdown':
+          this.streamingStage = 'Building score breakdown';
+          this.matchResult = {
+            ...current,
+            jdRequirements: (event.items ?? []).map(item => item.requirement),
+            requirementEvidence: (event.items ?? []).map(item => item.evidence)
+          };
+          break;
+        case 'positioning':
+          this.streamingStage = 'Writing positioning';
+          this.matchResult = {
+            ...current,
+            positioningAngle: event.positioningAngle
+          };
+          break;
+        case 'adjustments':
+          this.streamingStage = 'Preparing CV adjustments';
+          this.matchResult = { ...current, cvAdjustments: event.adjustments ?? [] };
+          break;
+      }
     } catch {
-      return this.matchResult;
+      // The authoritative saved result is loaded after the stream completes.
     }
   }
 
-  private repairJson(text: string): string | null {
-    const start = text.indexOf('{');
-    if (start === -1) return null;
-    let json = text.substring(start);
-
-    json = json.replace(/,\s*$/, '');
-
-    const stack: string[] = [];
-    let inString = false;
-    let escaped = false;
-
-    for (const ch of json) {
-      if (escaped) { escaped = false; continue; }
-      if (ch === '\\' && inString) { escaped = true; continue; }
-      if (ch === '"') { inString = !inString; continue; }
-      if (inString) continue;
-
-      if (ch === '{') stack.push('}');
-      else if (ch === '[') stack.push(']');
-      else if (ch === '}' || ch === ']') stack.pop();
+  private isFitStreamError(chunk: string): boolean {
+    try {
+      return (JSON.parse(chunk) as FitStreamEvent).type === 'error';
+    } catch {
+      return false;
     }
-
-    if (inString) json += '"';
-    json = json.replace(/,?\s*"[^"]*"\s*:\s*$/, '');
-    while (stack.length) { json += stack.pop(); }
-
-    return json;
   }
+}
+
+interface FitStreamEvent {
+  type?: 'progress' | 'score' | 'strengths' | 'gaps' | 'breakdown' | 'positioning' | 'adjustments' | 'error';
+  fitScore?: number;
+  recommendation?: MatchResult['recommendation'];
+  weightageReasoning?: string;
+  strengths?: StrengthItem[];
+  differentiation?: string[];
+  gaps?: GapItem[];
+  items?: { requirement: FitRequirement; evidence: RequirementEvidence }[];
+  adjustments?: AdjustmentItem[];
+  positioningAngle?: string;
+  stage?: string;
 }

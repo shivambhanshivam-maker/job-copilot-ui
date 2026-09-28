@@ -10,6 +10,8 @@ interface AuthResponse {
   userId: string;
   email: string;
   name: string;
+  advisorAccess: boolean;
+  accountMode?: 'STUDENT' | 'ADVISOR';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -19,9 +21,9 @@ export class AuthService {
 
   constructor(private http: HttpClient, private router: Router) {}
 
-  login(email: string, password: string): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.API}/auth/login`, { email, password }).pipe(
-      tap(res => this.storeAuth(res))
+  login(email: string, password: string, accountMode: 'STUDENT' | 'ADVISOR'): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.API}/auth/login`, { email, password, accountMode }).pipe(
+      tap(res => this.storeAuth(res, accountMode))
     );
   }
 
@@ -52,13 +54,24 @@ export class AuthService {
     return (this.isBrowser && localStorage.getItem('user_name')) || '';
   }
 
-  private storeAuth(res: AuthResponse): void {
+  hasAdvisorAccess(): boolean {
+    return this.isBrowser && localStorage.getItem('advisor_access') === 'true';
+  }
+
+  isAdvisorMode(): boolean {
+    return this.isBrowser && localStorage.getItem('account_mode') === 'ADVISOR';
+  }
+
+  private storeAuth(res: AuthResponse, requestedMode: 'STUDENT' | 'ADVISOR' = 'STUDENT'): void {
+    const accountMode = res.accountMode ?? requestedMode;
     if (this.isBrowser) {
       localStorage.setItem('jwt_token', res.token);
       localStorage.setItem('user_id', res.userId);
       localStorage.setItem('user_email', res.email);
       localStorage.setItem('user_name', res.name);
+      localStorage.setItem('advisor_access', String(res.advisorAccess));
+      localStorage.setItem('account_mode', accountMode);
     }
-    this.router.navigate(['/']);
+    this.router.navigate([accountMode === 'ADVISOR' ? '/school/support-queue' : '/']);
   }
 }

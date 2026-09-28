@@ -12,17 +12,21 @@ import { ApiService } from '../services/api.service';
   styleUrl: './sidebar.component.scss'
 })
 export class SidebarComponent implements OnInit {
-  expanded = false;
+  expanded = true;
   settingsOpen = false;
   userName = '';
+  advisorAccess = false;
 
   constructor(private authService: AuthService, private apiService: ApiService) {
     this.userName = this.authService.getUserName();
+    this.advisorAccess = this.authService.isAdvisorMode();
   }
 
   ngOnInit(): void {
-    this.apiService.getPreferences().subscribe();
-    this.apiService.getRoleCategories().subscribe();
+    if (!this.advisorAccess) {
+      this.apiService.getPreferences().subscribe();
+      this.apiService.getRoleCategories().subscribe();
+    }
   }
 
   toggle(): void {

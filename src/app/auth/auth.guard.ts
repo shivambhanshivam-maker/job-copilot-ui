@@ -12,3 +12,35 @@ export const authGuard: CanActivateFn = () => {
   router.navigate(['/login']);
   return false;
 };
+
+export const studentGuard: CanActivateFn = () => {
+  const platformId = inject(PLATFORM_ID);
+  const router = inject(Router);
+
+  if (!isPlatformBrowser(platformId)) return true;
+  if (!localStorage.getItem('jwt_token')) {
+    router.navigate(['/login']);
+    return false;
+  }
+  if (localStorage.getItem('account_mode') === 'ADVISOR') {
+    router.navigate(['/school/support-queue']);
+    return false;
+  }
+  return true;
+};
+
+export const advisorGuard: CanActivateFn = () => {
+  const platformId = inject(PLATFORM_ID);
+  const router = inject(Router);
+
+  if (!isPlatformBrowser(platformId)) return true;
+  if (!localStorage.getItem('jwt_token')) {
+    router.navigate(['/login']);
+    return false;
+  }
+  if (localStorage.getItem('account_mode') !== 'ADVISOR') {
+    router.navigate(['/']);
+    return false;
+  }
+  return true;
+};

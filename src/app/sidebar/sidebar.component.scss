@@ -1,8 +1,9 @@
 .sidebar {
-  width: 60px;
-  min-width: 60px;
+  width: 72px;
+  min-width: 72px;
   height: 100vh;
-  background: #1a1a2e;
+  background: #111827;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   transition: width 0.25s ease, min-width 0.25s ease;
@@ -10,8 +11,8 @@
   flex-shrink: 0;
 
   &.expanded {
-    width: 200px;
-    min-width: 200px;
+    width: 236px;
+    min-width: 236px;
   }
 }
 
@@ -19,27 +20,28 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem 0.75rem 0.75rem;
+  min-height: 72px;
+  padding: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .brand-mark {
-  width: 30px;
-  height: 30px;
-  min-width: 30px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   background: #4f46e5;
-  border-radius: 7px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 800;
   color: #fff;
   letter-spacing: -0.01em;
 }
 
 .brand-name {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #fff;
   white-space: nowrap;
@@ -47,41 +49,45 @@
 }
 
 .toggle-btn {
-  width: 100%;
-  padding: 1rem;
+  width: 36px;
+  height: 36px;
+  margin: 0.75rem 1rem 0.35rem auto;
+  padding: 0;
   background: none;
   border: none;
   color: #a0a0c0;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
+  border-radius: 8px;
   transition: color 0.2s;
 
   &:hover {
     color: #fff;
+    background: rgba(255, 255, 255, 0.08);
   }
 }
 
 .nav-items {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem;
+  gap: 0.3rem;
+  padding: 0.65rem 0.75rem;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem;
-  padding-left: calc(0.75rem + 3px);
+  min-height: 42px;
+  padding: 0.65rem 0.75rem;
   border-radius: 8px;
-  border-left: 3px solid transparent;
+  border: 1px solid transparent;
   color: #a0a0c0;
   text-decoration: none;
   white-space: nowrap;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  transition: background var(--jc-motion-fast), color var(--jc-motion-fast), border-color var(--jc-motion-fast);
 
   &:hover {
     background: rgba(255, 255, 255, 0.07);
@@ -89,16 +95,15 @@
   }
 
   &.active {
-    background: rgba(99, 102, 241, 0.15);
-    color: #a5b4fc;
-    border-left-color: #4f46e5;
-    padding-left: 0.75rem;
+    background: rgba(99, 102, 241, 0.18);
+    color: #e0e7ff;
+    border-color: rgba(129, 140, 248, 0.25);
   }
 }
 
 .nav-label {
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .nav-item--disabled {
@@ -120,7 +125,7 @@
 
 .settings-section {
   margin-top: auto;
-  padding: 0.5rem;
+  padding: 0.65rem 0.75rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -133,7 +138,7 @@
 }
 
 .user-row {
-  padding: 0.4rem 0.75rem 0.4rem calc(0.75rem + 3px);
+  padding: 0.75rem 0.75rem 0.35rem;
 }
 
 .user-name {
@@ -155,5 +160,20 @@
   &:hover {
     color: #fca5a5;
     background: rgba(239, 68, 68, 0.1);
+  }
+}
+
+@media (max-width: 900px) {
+  .sidebar,
+  .sidebar.expanded {
+    width: 72px;
+    min-width: 72px;
+  }
+
+  .brand-name,
+  .nav-label,
+  .nav-coming-soon,
+  .user-row {
+    display: none;
   }
 }

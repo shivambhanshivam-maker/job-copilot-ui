@@ -1,9 +1,9 @@
-import { Component, OnInit, HostListener, PLATFORM_ID, Inject, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, PLATFORM_ID, Inject, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser, KeyValuePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { catchError, of } from 'rxjs';
-import { ApiService, CvName, JobApplication, PendingAction, EmailTestResponse, PostApplicationInsight, PostApplicationInsightResult } from '../services/api.service';
+import { ApiService, CvName, JobApplication, PendingAction, EmailReview, EmailReviewCandidate, EmailTestResponse, PostApplicationInsight, PostApplicationInsightResult } from '../services/api.service';
 import { ToastService } from '../services/toast.service';
 import { FlatpickrDirective } from '../shared/flatpickr.directive';
 
@@ -16,8 +16,9 @@ const STATUSES = ['Referral Received', 'Applied', 'Interview', 'Offer', 'Rejecte
   templateUrl: './job-applications.component.html',
   styleUrl: './job-applications.component.scss'
 })
-export class JobApplicationsComponent implements OnInit {
+export class JobApplicationsComponent implements OnInit, OnDestroy {
   jobApplications: JobApplication[] = [];
+  emailReviews: EmailReview[] = [];
   private pendingActions: PendingAction[] = [];
   expandedUpdatesIds = new Set<string>();
   expandedActionIds = new Set<string>();
@@ -43,9 +44,11 @@ export class JobApplicationsComponent implements OnInit {
   deletingRows = new Set<string>();
 
   showAddModal = false;
-  addForm = { company: '', jobTitle: '', roleCategory: '' };
+  addForm = { company: '', jobTitle: '', roleCategory: '', cvId: '', jobDescriptionText: '' };
   addFormTouched = false;
   addSaving = false;
+  analysisRetryIds = new Set<string>();
+  private analysisPollTimer: ReturnType<typeof setTimeout> | null = null;
 
   jdModal: { app: JobApplication } | null = null;
   jdForm = { url: '', text: '' };
@@ -57,8 +60,10 @@ export class JobApplicationsComponent implements OnInit {
   isBrowser = false;
 
   // ── Email Test tab ───────────────────────────────────────
-  activeTab: 'applications' | 'emailTest' = 'applications';
-  emailForm = { subject: '', sender: '', body: '' };
+  activeTab: 'applications' | 'emailReview' | 'emailTest' = 'applications';
+  emailReviewLoading = false;
+  emailReviewActionId: string | null = null;
+  emailForm = { subject: '', sender: '', body: '', messageId: '' };
   emailLoading = false;
   emailError: string | null = null;
   emailResult: EmailTestResponse | null = null;
@@ -80,6 +85,10 @@ export class JobApplicationsComponent implements OnInit {
     this.loadData();
   }
 
+  ngOnDestroy(): void {
+    if (this.analysisPollTimer) clearTimeout(this.analysisPollTimer);
+  }
+
   @HostListener('document:click')
   closeDropdowns(): void {
     this.statusDropdown = null;
@@ -93,17 +102,20 @@ export class JobApplicationsComponent implements OnInit {
     this.loading = true;
     forkJoin({
       apps: this.apiService.getJobApplications().pipe(catchError(() => of([]))),
+      emailReviews: this.apiService.getEmailReviews().pipe(catchError(() => of([]))),
       actions: this.apiService.getPendingActions().pipe(catchError(() => of([]))),
       categories: this.apiService.getRoleCategories().pipe(catchError(() => of([]))),
       cvNames: this.apiService.getCvNames().pipe(catchError(() => of([])))
     }).subscribe({
-      next: ({ apps, actions, categories, cvNames }) => {
+      next: ({ apps, emailReviews, actions, categories, cvNames }) => {
         this.jobApplications = apps.sort((a, b) =>
           (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
+        this.emailReviews = emailReviews;
         this.pendingActions = actions;
         this.roleCategories = categories.map(c => c.name);
         this.cvNames = cvNames;
         this.loading = false;
+        this.scheduleAnalysisRefresh();
       },
       error: () => { this.loading = false; }
     });
@@ -385,13 +397,17 @@ export class JobApplicationsComponent implements OnInit {
 
   // ── Add modal ────────────────────────────────────────────
   addRow(): void {
-    this.addForm = { company: '', jobTitle: '', roleCategory: '' };
+    this.addForm = { company: '', jobTitle: '', roleCategory: '', cvId: '', jobDescriptionText: '' };
     this.addFormTouched = false;
     this.showAddModal = true;
   }
 
   get addFormValid(): boolean {
-    return !!this.addForm.company.trim() && !!this.addForm.jobTitle.trim() && !!this.addForm.roleCategory;
+    return !!this.addForm.company.trim()
+      && !!this.addForm.jobTitle.trim()
+      && !!this.addForm.roleCategory
+      && !!this.addForm.cvId
+      && !!this.addForm.jobDescriptionText.trim();
   }
 
   submitNewApp(): void {
@@ -403,6 +419,8 @@ export class JobApplicationsComponent implements OnInit {
       jobTitle: this.addForm.jobTitle.trim(),
       recruiterName: '',
       roleCategory: this.addForm.roleCategory,
+      cvId: this.addForm.cvId,
+      jobDescriptionText: this.addForm.jobDescriptionText.trim(),
       applicationStatus: 'Applied',
       interviewDate: null
     };
@@ -411,9 +429,86 @@ export class JobApplicationsComponent implements OnInit {
         this.jobApplications = [created, ...this.jobApplications];
         this.addSaving = false;
         this.showAddModal = false;
+        this.scheduleAnalysisRefresh();
       },
       error: () => {
         this.addSaving = false;
+      }
+    });
+  }
+
+  openEmailReviews(): void {
+    this.activeTab = 'emailReview';
+    this.loadEmailReviews();
+  }
+
+  loadEmailReviews(): void {
+    this.emailReviewLoading = true;
+    this.apiService.getEmailReviews().subscribe({
+      next: reviews => {
+        this.emailReviews = reviews;
+        this.emailReviewLoading = false;
+      },
+      error: () => { this.emailReviewLoading = false; }
+    });
+  }
+
+  resolveEmailReview(review: EmailReview, candidate: EmailReviewCandidate): void {
+    if (this.emailReviewActionId) return;
+    this.emailReviewActionId = review.id;
+    this.apiService.resolveEmailReview(review.id, candidate.id).subscribe({
+      next: saved => {
+        this.emailReviews = this.emailReviews.filter(item => item.id !== review.id);
+        const index = this.jobApplications.findIndex(app => app.id === saved.id);
+        if (index >= 0) this.jobApplications[index] = saved;
+        this.emailReviewActionId = null;
+        this.toastService.show('Email attached to the application');
+      },
+      error: () => {
+        this.emailReviewActionId = null;
+        this.toastService.show('Could not attach this email. Please try again.', 'error');
+      }
+    });
+  }
+
+  ignoreEmailReview(review: EmailReview): void {
+    if (this.emailReviewActionId) return;
+    this.emailReviewActionId = review.id;
+    this.apiService.ignoreEmailReview(review.id).subscribe({
+      next: () => {
+        this.emailReviews = this.emailReviews.filter(item => item.id !== review.id);
+        this.emailReviewActionId = null;
+      },
+      error: () => {
+        this.emailReviewActionId = null;
+        this.toastService.show('Could not dismiss this review item. Please try again.', 'error');
+      }
+    });
+  }
+
+  private scheduleAnalysisRefresh(): void {
+    if (this.analysisPollTimer) {
+      clearTimeout(this.analysisPollTimer);
+      this.analysisPollTimer = null;
+    }
+    if (this.jobApplications.some(app => app.fitAnalysisStatus === 'PENDING')) {
+      this.analysisPollTimer = setTimeout(() => this.loadData(), 3000);
+    }
+  }
+
+  retryFitAnalysis(app: JobApplication, event: MouseEvent): void {
+    event.stopPropagation();
+    if (!app.id || this.analysisRetryIds.has(app.id)) return;
+    this.analysisRetryIds.add(app.id);
+    this.apiService.retryJobApplicationFitAnalysis(app.id).subscribe({
+      next: updated => {
+        this.jobApplications = this.jobApplications.map(item => item.id === updated.id ? updated : item);
+        this.analysisRetryIds.delete(app.id!);
+        this.scheduleAnalysisRefresh();
+      },
+      error: () => {
+        this.analysisRetryIds.delete(app.id!);
+        this.toastService.show('Could not restart fit analysis', 'error', 3000);
       }
     });
   }
@@ -493,8 +588,8 @@ export class JobApplicationsComponent implements OnInit {
   clearJd(): void {
     if (!this.jdModal) return;
     const app = this.jdModal.app;
-    app.jobDescriptionUrl = undefined;
-    app.jobDescriptionText = undefined;
+    app.jobDescriptionUrl = null;
+    app.jobDescriptionText = null;
     this.jdModal = null;
     this.onFieldChange(app, true);
   }
@@ -619,7 +714,8 @@ export class JobApplicationsComponent implements OnInit {
     this.apiService.processEmailTest({
       subject: this.emailForm.subject,
       sender: this.emailForm.sender,
-      body: this.emailForm.body
+      body: this.emailForm.body,
+      messageId: this.emailForm.messageId.trim() || undefined
     }).subscribe({
       next: (result) => {
         this.emailResult = result;
@@ -646,5 +742,13 @@ export class JobApplicationsComponent implements OnInit {
       }
     })();
     return `${day}${suffix} ${date.toLocaleString('en-US', { month: 'long' })}, ${date.getFullYear()}`;
+  }
+
+  formatReviewDate(dateStr?: string): string {
+    if (!dateStr) return 'Date unavailable';
+    const date = new Date(dateStr);
+    return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric'
+    });
   }
 }

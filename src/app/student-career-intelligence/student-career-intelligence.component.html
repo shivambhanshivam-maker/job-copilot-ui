@@ -1,0 +1,181 @@
+<div class="career-intelligence-page">
+  <header class="page-header">
+    <h1>Career Intelligence</h1>
+    <p>See what to improve, what is working, and what successful peers showed.</p>
+  </header>
+
+  @if (loading) {
+    <section class="state-panel">
+      <div>
+        <div class="loader"></div>
+        <p>Reading your application patterns...</p>
+      </div>
+    </section>
+  } @else {
+    <section class="intelligence-section focus-section">
+      <div class="section-inner">
+        <div class="section-heading">
+          <h2>Your next focus</h2>
+        </div>
+
+        @if (primaryFocus; as focus) {
+          <article class="focus-card">
+            <div class="focus-main">
+              <h3>{{ focus.title }}</h3>
+              <p>{{ focus.action }}</p>
+            </div>
+            <p class="focus-basis">{{ focus.reason }}</p>
+          </article>
+        } @else {
+          <div class="quiet-state">Keep tracking your applications. We need more evidence before recommending a focus.</div>
+        }
+      </div>
+    </section>
+
+    <section class="intelligence-section patterns-section">
+      <div class="section-inner">
+        <div class="section-heading">
+          <h2>Your patterns</h2>
+        </div>
+
+        <div class="pattern-block">
+          <h3>Recurring gaps</h3>
+          @if (recurringGapSignals.length) {
+            <div class="gap-list">
+              @for (signal of recurringGapSignals; track trackSignal($index, signal)) {
+                <article class="gap-row">
+                  <div class="gap-row-content">
+                    <strong>{{ recurringGapTitle(signal) }}</strong>
+                    <span class="gap-row-context">{{ recurringGapContext(signal) }}</span>
+                  </div>
+                  @if (signal.examples.length) {
+                    <details class="gap-details">
+                      <summary>See examples from your applications</summary>
+                      <div class="gap-example-list">
+                        @for (example of signal.examples; track trackGapExample($index, example)) {
+                          <div class="gap-example">
+                            <div class="gap-example-heading">
+                              <strong>{{ example.jobTitle || 'Applied role' }}</strong>
+                              @if (example.company) {
+                                <span class="gap-example-company">{{ example.company }}</span>
+                              }
+                            </div>
+                            <p>{{ example.rawGapText }}</p>
+                          </div>
+                        }
+                      </div>
+                    </details>
+                  }
+                </article>
+              }
+            </div>
+          } @else {
+            <div class="quiet-state quiet-state--compact">No recurring gap has enough evidence yet.</div>
+          }
+        </div>
+
+        <div class="pattern-block">
+          <h3>Role category performance</h3>
+          @if (roleCategoryPerformance.length) {
+            <p class="performance-summary">{{ roleCategoryPerformanceSummary }}</p>
+            <div class="performance-comparison" role="list" aria-label="Role category performance">
+              @for (performance of roleCategoryPerformance; track trackRoleCategory($index, performance)) {
+                <article class="performance-category" role="listitem">
+                  <strong class="performance-category-name">{{ performance.category }}</strong>
+                  <div class="performance-metrics">
+                    <div class="metric-row">
+                      <span class="metric-label">Fit</span>
+                      <span class="metric-track" [class.metric-track--empty]="performance.fitScore === null">
+                        <span class="metric-fill metric-fill--fit" [style.width.%]="performance.fitScore ?? 0"></span>
+                      </span>
+                      <strong class="metric-value">{{ fitScore(performance.fitScore) }}</strong>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Response</span>
+                      <span class="metric-track" [class.metric-track--empty]="performance.responseRate === null">
+                        <span class="metric-fill metric-fill--response" [style.width.%]="(performance.responseRate ?? 0) * 100"></span>
+                      </span>
+                      <strong class="metric-value">{{ responseRate(performance.responseRate) }}</strong>
+                    </div>
+                  </div>
+                </article>
+              }
+            </div>
+          } @else {
+            <div class="quiet-state quiet-state--compact">More applications are needed to compare role categories.</div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="intelligence-section peer-section">
+      <div class="section-inner">
+        <div class="section-heading">
+          <h2>Peer insights</h2>
+        </div>
+
+        @if (peerEvidenceLoading) {
+          <div class="peer-loading">Loading anonymous peer patterns...</div>
+        } @else if (!peerCategories.length) {
+          <div class="quiet-state">More comparable interview outcomes are needed before peer insights can be shown.</div>
+        } @else {
+          @if (activePeerCategory; as category) {
+            <div class="peer-controls">
+              <label for="peer-role-category">
+                <span>Role category</span>
+                <select id="peer-role-category" [ngModel]="selectedPeerCategory" (ngModelChange)="selectPeerCategory($event)">
+                  @for (peerCategory of peerCategories; track peerCategoryTrack($index, peerCategory)) {
+                    <option [value]="peerCategory.roleCategory">{{ peerCategory.roleCategory }}</option>
+                  }
+                </select>
+              </label>
+
+              @if (category.patterns.length > 1) {
+                <label for="peer-capability">
+                  <span>Skill gap</span>
+                  <select id="peer-capability" [(ngModel)]="selectedPeerCapability">
+                    @for (pattern of category.patterns; track peerPatternTrack($index, pattern)) {
+                      <option [value]="pattern.capability">{{ pattern.capability }}</option>
+                    }
+                  </select>
+                </label>
+              }
+            </div>
+
+            @if (activePeerPattern; as pattern) {
+              <article class="peer-insight-card">
+                <header>
+                  <span class="peer-kicker">{{ peerPatternLabel(pattern) }}</span>
+                  <h3>{{ pattern.capability }}</h3>
+                  <p>Interview-reached peers applying to {{ category.roleCategory }} roles often showed this skill in their CV evidence.</p>
+                </header>
+
+                <div class="peer-comparison">
+                  <div class="peer-result peer-result--positive">
+                    <span>Interview-reached peers</span>
+                    <strong>{{ interviewPeerEvidenceSummary(pattern) }}</strong>
+                    <small>{{ percentage(pattern.interviewEvidenceRate) }} of the peer sample</small>
+                  </div>
+
+                  <div class="peer-result peer-result--current">
+                    <span>Your CV evidence</span>
+                    <strong>{{ currentStudentEvidenceSummary(pattern) }}</strong>
+                    <small>
+                      @if (pattern.currentStudentApplicationsWithRequirement > 0) {
+                        {{ percentage(pattern.currentStudentEvidenceRate) }} of assessed applied roles
+                      } @else {
+                        No linked fit analysis
+                      }
+                    </small>
+                  </div>
+                </div>
+
+                <p class="peer-disclaimer">An observed pattern, not proof that this capability caused an interview.</p>
+              </article>
+            }
+          }
+        }
+      </div>
+    </section>
+  }
+</div>

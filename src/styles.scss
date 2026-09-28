@@ -2,6 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --jc-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --jc-canvas: #f5f7fb;
+  --jc-surface: #ffffff;
+  --jc-surface-subtle: #f8fafc;
+  --jc-surface-muted: #f1f5f9;
+  --jc-text: #172033;
+  --jc-text-muted: #64748b;
+  --jc-text-soft: #94a3b8;
+  --jc-border: #dfe5ee;
+  --jc-border-strong: #cbd5e1;
+  --jc-primary: #4f46e5;
+  --jc-primary-hover: #4338ca;
+  --jc-primary-soft: #eef2ff;
+  --jc-success: #059669;
+  --jc-success-soft: #ecfdf5;
+  --jc-warning: #b45309;
+  --jc-warning-soft: #fffbeb;
+  --jc-danger: #dc2626;
+  --jc-danger-soft: #fef2f2;
+  --jc-radius-sm: 6px;
+  --jc-radius-md: 8px;
+  --jc-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --jc-shadow-md: 0 12px 28px rgba(15, 23, 42, 0.08);
+  --jc-motion-fast: 160ms ease;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -9,12 +36,40 @@
 }
 
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
-  background: #f8fafc;
-  color: #1a1a2e;
+  font-family: var(--jc-font-sans);
+  background: var(--jc-canvas);
+  color: var(--jc-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a,
+input,
+textarea,
+select,
+summary {
+  &:focus-visible {
+    outline: 3px solid rgba(79, 70, 229, 0.2);
+    outline-offset: 2px;
+  }
+}
+
+::selection {
+  background: #c7d2fe;
+  color: #1e1b4b;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 // Flatpickr trigger input hidden inside status cell

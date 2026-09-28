@@ -23,6 +23,25 @@ import { AuthService } from '../../services/auth.service';
         }
 
         <form (ngSubmit)="onSubmit()">
+          <div class="mode-toggle" role="radiogroup" aria-label="Account type">
+            <button
+              type="button"
+              class="mode-btn"
+              [class.active]="accountMode === 'STUDENT'"
+              (click)="accountMode = 'STUDENT'"
+            >
+              Student
+            </button>
+            <button
+              type="button"
+              class="mode-btn"
+              [class.active]="accountMode === 'ADVISOR'"
+              (click)="accountMode = 'ADVISOR'"
+            >
+              Advisor
+            </button>
+          </div>
+
           <div class="field">
             <label>Email</label>
             <input
@@ -127,6 +146,35 @@ import { AuthService } from '../../services/auth.service';
       margin-bottom: 1.25rem;
     }
 
+    .mode-toggle {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.35rem;
+      padding: 0.3rem;
+      margin-bottom: 1.25rem;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+    }
+
+    .mode-btn {
+      border: 0;
+      border-radius: 8px;
+      padding: 0.62rem 0.75rem;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.62);
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .mode-btn.active {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+    }
+
     .field {
       margin-bottom: 1.1rem;
     }
@@ -210,6 +258,7 @@ import { AuthService } from '../../services/auth.service';
 export class LoginComponent {
   email = '';
   password = '';
+  accountMode: 'STUDENT' | 'ADVISOR' = 'STUDENT';
   loading = false;
   error = '';
 
@@ -219,9 +268,13 @@ export class LoginComponent {
     if (!this.email || !this.password) return;
     this.loading = true;
     this.error = '';
-    this.authService.login(this.email, this.password).subscribe({
-      error: () => {
-        this.error = 'Invalid email or password.';
+    this.authService.login(this.email, this.password, this.accountMode).subscribe({
+      error: (err) => {
+        this.error = err?.status === 403
+          ? this.accountMode === 'ADVISOR'
+            ? 'This account does not have advisor access.'
+            : 'This account is configured for the advisor workspace.'
+          : 'Invalid email or password.';
         this.loading = false;
       }
     });
